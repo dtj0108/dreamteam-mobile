@@ -7,11 +7,10 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { useChannels, useDMConversations } from "@/lib/hooks/useTeam";
 import { Channel, DirectMessageConversation } from "@/lib/types/team";
 
@@ -53,32 +52,33 @@ export default function UnifiedInboxScreen() {
     const messages: UnifiedMessage[] = [];
 
     // Add channels
-    if (channelsData?.data && (activeTab === "all" || activeTab === "channels")) {
-      channelsData.data.forEach((channel: Channel) => {
+    if (channelsData?.channels && (activeTab === "all" || activeTab === "channels")) {
+      channelsData.channels.forEach((channel) => {
         messages.push({
           id: `channel-${channel.id}`,
           type: "channel",
           name: channel.name,
-          emoji: channel.is_private ? "🔒" : "#",
-          lastMessage: channel.last_message?.content,
-          lastMessageAt: channel.last_message?.created_at,
+          emoji: channel.type === "private" ? "🔒" : "#",
+          lastMessage: channel.last_message_preview || undefined,
+          lastMessageAt: channel.last_message_at || undefined,
           unreadCount: channel.unread_count || 0,
         });
       });
     }
 
     // Add DMs
-    if (dmsData?.data && (activeTab === "all" || activeTab === "dms")) {
-      dmsData.data.forEach((dm: DirectMessageConversation) => {
+    if (dmsData?.conversations && (activeTab === "all" || activeTab === "dms")) {
+      dmsData.conversations.forEach((dm: DirectMessageConversation) => {
+        const participant = dm.participant;
         messages.push({
           id: `dm-${dm.id}`,
           type: "dm",
-          name: dm.other_user.display_name || dm.other_user.email,
-          avatarUrl: dm.other_user.avatar_url,
+          name: participant?.display_name || participant?.user?.name || "Unknown",
+          avatarUrl: participant?.user?.avatar_url || undefined,
           lastMessage: dm.last_message?.content,
           lastMessageAt: dm.last_message?.created_at,
           unreadCount: dm.unread_count || 0,
-          isOnline: dm.other_user.status === "online",
+          isOnline: participant?.presence?.status === "online",
         });
       });
     }
@@ -202,7 +202,7 @@ export default function UnifiedInboxScreen() {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background">
       {/* Header */}
       <View className="border-b border-border px-4 py-3">
         <View className="flex-row items-center justify-between">
@@ -281,7 +281,7 @@ export default function UnifiedInboxScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

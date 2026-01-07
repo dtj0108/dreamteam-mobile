@@ -1,40 +1,63 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   TextInput,
   Pressable,
   ActivityIndicator,
-  Keyboard,
+  Platform,
 } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
-
-import Colors from "@/constants/Colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { GlassView } from "expo-glass-effect";
+import { Ionicons } from "@expo/vector-icons";
 
 interface MessageInputProps {
   channelId?: string;
   dmId?: string;
   threadId?: string;
+  channelName?: string; // For dynamic placeholder
   placeholder?: string;
   onSend: (content: string) => Promise<void>;
   onTyping: () => void;
+  onAttachmentPress?: () => void;
+  onMicrophonePress?: () => void;
   disabled?: boolean;
+  autoFocus?: boolean;
 }
 
 export function MessageInput({
   channelId,
   dmId,
   threadId,
-  placeholder = "Type a message...",
+  channelName,
+  placeholder,
   onSend,
   onTyping,
+  onAttachmentPress,
+  onMicrophonePress,
   disabled = false,
+  autoFocus = false,
 }: MessageInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const insets = useSafeAreaInsets();
 
-  const canSend = content.trim().length > 0 && !disabled && !isSending;
+  // Auto-focus with delay for screen transition
+  useEffect(() => {
+    if (autoFocus) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoFocus]);
+
+  const hasContent = content.trim().length > 0;
+  const canSend = hasContent && !disabled && !isSending;
+
+  // Dynamic placeholder based on context
+  const displayPlaceholder = placeholder || (channelName ? `Message #${channelName}` : "Message...");
 
   const handleChangeText = useCallback(
     (text: string) => {
@@ -69,78 +92,138 @@ export function MessageInput({
     }
   }, [content, canSend, onSend]);
 
-  const handleEmojiPress = useCallback(() => {
-    // TODO: Open emoji picker
-    console.log("Open emoji picker");
-  }, []);
-
   const handleAttachmentPress = useCallback(() => {
-    // TODO: Open attachment picker
-    console.log("Open attachment picker");
-  }, []);
+    onAttachmentPress?.();
+  }, [onAttachmentPress]);
 
-  return (
-    <View className="border-t border-border bg-background px-4 py-2">
-      <View className="flex-row items-end rounded-2xl bg-muted">
-        {/* Attachment button */}
+  const handleMicrophonePress = useCallback(() => {
+    onMicrophonePress?.();
+  }, [onMicrophonePress]);
+
+  const textInput = (
+    <TextInput
+      ref={inputRef}
+      className="max-h-40 text-base text-foreground"
+      placeholder={displayPlaceholder}
+      placeholderTextColor="#9ca3af"
+      value={content}
+      onChangeText={handleChangeText}
+      multiline
+      editable={!disabled}
+      returnKeyType="default"
+      blurOnSubmit={false}
+      textAlignVertical="center"
+    />
+  );
+
+  const actionButtons = (
+    <View className="flex-row items-center justify-between pt-1">
+        {/* Left side action buttons */}
+        <View className="flex-row items-center">
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-gray-100"
+            onPress={handleAttachmentPress}
+            disabled={disabled}
+          >
+            <Ionicons
+              name="add"
+              size={22}
+              color={disabled ? "#d1d5db" : "#64748b"}
+            />
+          </Pressable>
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-gray-100"
+            disabled={disabled}
+          >
+            <Ionicons
+              name="text"
+              size={18}
+              color={disabled ? "#d1d5db" : "#64748b"}
+            />
+          </Pressable>
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-gray-100"
+            disabled={disabled}
+          >
+            <Ionicons
+              name="happy-outline"
+              size={20}
+              color={disabled ? "#d1d5db" : "#64748b"}
+            />
+          </Pressable>
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-gray-100"
+            disabled={disabled}
+          >
+            <Ionicons
+              name="at"
+              size={20}
+              color={disabled ? "#d1d5db" : "#64748b"}
+            />
+          </Pressable>
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-gray-100"
+            disabled={disabled}
+          >
+            <Ionicons
+              name="create-outline"
+              size={20}
+              color={disabled ? "#d1d5db" : "#64748b"}
+            />
+          </Pressable>
+        </View>
+
+        {/* Send button - always visible */}
         <Pressable
-          className="mb-2 ml-2 h-8 w-8 items-center justify-center rounded-full active:bg-background"
-          onPress={handleAttachmentPress}
-          disabled={disabled}
-        >
-          <FontAwesome
-            name="paperclip"
-            size={18}
-            color={disabled ? Colors.border : Colors.mutedForeground}
-          />
-        </Pressable>
-
-        {/* Text Input */}
-        <TextInput
-          ref={inputRef}
-          className="max-h-32 flex-1 px-2 py-2 text-base text-foreground"
-          placeholder={placeholder}
-          placeholderTextColor={Colors.mutedForeground}
-          value={content}
-          onChangeText={handleChangeText}
-          multiline
-          editable={!disabled}
-          returnKeyType="default"
-          blurOnSubmit={false}
-        />
-
-        {/* Emoji button */}
-        <Pressable
-          className="mb-2 h-8 w-8 items-center justify-center rounded-full active:bg-background"
-          onPress={handleEmojiPress}
-          disabled={disabled}
-        >
-          <FontAwesome
-            name="smile-o"
-            size={18}
-            color={disabled ? Colors.border : Colors.mutedForeground}
-          />
-        </Pressable>
-
-        {/* Send button */}
-        <Pressable
-          className={`mb-2 mr-2 h-8 w-8 items-center justify-center rounded-full ${
-            canSend ? "bg-primary" : "bg-transparent"
-          }`}
+          className="h-9 w-9 items-center justify-center rounded-full active:bg-gray-100"
           onPress={handleSend}
           disabled={!canSend}
         >
           {isSending ? (
-            <ActivityIndicator size="small" color="white" />
+            <ActivityIndicator size="small" color="#0ea5e9" />
           ) : (
-            <FontAwesome
-              name="send"
-              size={14}
-              color={canSend ? "white" : Colors.border}
+            <Ionicons
+              name={canSend ? "send" : "send-outline"}
+              size={canSend ? 22 : 20}
+              color={canSend ? "#0ea5e9" : "#d1d5db"}
             />
           )}
         </Pressable>
+    </View>
+  );
+
+  const inputContent = (
+    <>
+      {/* Text input */}
+      <View className="min-h-[44px] justify-center px-2">
+        {textInput}
       </View>
+      {/* Action buttons */}
+      {actionButtons}
+    </>
+  );
+
+  return (
+    <View
+      className="px-4"
+      style={{ paddingTop: 8, paddingBottom: 8 + insets.bottom }}
+    >
+      {Platform.OS === "ios" ? (
+        <GlassView
+          style={{
+            borderRadius: 20,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            overflow: "hidden",
+          }}
+        >
+          {inputContent}
+        </GlassView>
+      ) : (
+        <View className="rounded-2xl bg-gray-100 px-3 py-2">
+          {inputContent}
+        </View>
+      )}
     </View>
   );
 }

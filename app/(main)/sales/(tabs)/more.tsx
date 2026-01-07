@@ -21,20 +21,11 @@ export default function MoreScreen() {
         {/* Menu Items */}
         <View className="gap-2">
           <MenuItem
-            icon="dollar"
-            iconColor="#22c55e"
-            title="Deals"
-            subtitle="Manage sales opportunities"
-            onPress={() => {}}
-            comingSoon
-          />
-          <MenuItem
-            icon="history"
-            iconColor="#3b82f6"
-            title="Activities"
-            subtitle="Log calls, emails & meetings"
-            onPress={() => {}}
-            comingSoon
+            icon="bar-chart"
+            iconColor="#8b5cf6"
+            title="Reports"
+            subtitle="Pipeline & activity analytics"
+            onPress={() => router.push("/(main)/sales/reports")}
           />
           <MenuItem
             icon="envelope"
@@ -60,14 +51,6 @@ export default function MoreScreen() {
             iconColor="#0ea5e9"
             title="Workflows"
             subtitle="Sales automation"
-            onPress={() => {}}
-            comingSoon
-          />
-          <MenuItem
-            icon="bar-chart"
-            iconColor="#6b7280"
-            title="Reports"
-            subtitle="Pipeline & activity analytics"
             onPress={() => {}}
             comingSoon
           />

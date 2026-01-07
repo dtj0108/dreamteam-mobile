@@ -10,7 +10,7 @@ export default function Index() {
   }
 
   if (session) {
-    return <Redirect href="/(main)/finance" />;
+    return <Redirect href="/(main)/hub" />;
   }
 
   return <Redirect href="/(auth)/login" />;

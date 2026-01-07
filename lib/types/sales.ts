@@ -294,3 +294,181 @@ export const formatCurrency = (value: number, currency = "USD"): string => {
     maximumFractionDigits: 0,
   }).format(value);
 };
+
+export const getActivityTypeLabel = (type: ActivityType): string => {
+  const labels: Record<ActivityType, string> = {
+    call: "Call",
+    email: "Email",
+    meeting: "Meeting",
+    note: "Note",
+    task: "Task",
+  };
+  return labels[type];
+};
+
+// Activity type emojis for quick actions
+export const ACTIVITY_TYPE_EMOJIS: Record<ActivityType, string> = {
+  call: "📞",
+  email: "📧",
+  meeting: "📅",
+  note: "📝",
+  task: "✅",
+};
+
+// Activity input type
+export interface CreateLeadActivityInput {
+  type: ActivityType;
+  subject?: string;
+  description?: string;
+  due_date?: string;
+  is_completed?: boolean;
+}
+
+// ============================================
+// Deal/Opportunity Types (for Deals tab)
+// ============================================
+
+export interface Deal extends LeadOpportunity {
+  lead?: Pick<Lead, "id" | "name">;
+}
+
+export interface DealsResponse {
+  deals: Deal[];
+  total?: number;
+}
+
+export interface CreateDealInput {
+  name: string;
+  lead_id?: string;
+  value?: number;
+  stage?: OpportunityStage;
+  probability?: number;
+  expected_close_date?: string;
+  notes?: string;
+}
+
+export interface UpdateDealInput extends Partial<CreateDealInput> {
+  id: string;
+}
+
+export interface DealsQueryParams {
+  stage?: OpportunityStage;
+  lead_id?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface MoveDealStageInput {
+  deal_id: string;
+  stage: OpportunityStage;
+}
+
+// ============================================
+// Sales Analytics Types
+// ============================================
+
+export interface SalesAnalyticsOverview {
+  summary: {
+    totalLeads: number;
+    newLeads: number;
+    qualifiedLeads: number;
+    wonDeals: number;
+    lostDeals: number;
+    conversionRate: number;
+  };
+  pipelineValue: {
+    total: number;
+    weighted: number;
+    won: number;
+    lost: number;
+  };
+  changes: {
+    leads: number;
+    deals: number;
+    revenue: number;
+  };
+}
+
+export interface ConversionFunnelStage {
+  id: string;
+  name: string;
+  color: string;
+  count: number;
+  value: number;
+  conversionRate: number;
+}
+
+export interface ConversionFunnelData {
+  stages: ConversionFunnelStage[];
+  overallConversionRate: number;
+}
+
+export interface DealMetrics {
+  summary: {
+    totalPipelineValue: number;
+    expectedRevenue: number;
+    wonValue: number;
+    lostValue: number;
+    avgDealSize: number;
+    avgTimeToClose: number;
+  };
+  byStage: Array<{
+    stage: OpportunityStage;
+    count: number;
+    value: number;
+    avgValue: number;
+  }>;
+  nearingClose: Array<{
+    id: string;
+    name: string;
+    value: number;
+    expectedCloseDate: string;
+    probability: number;
+  }>;
+}
+
+export interface ActivityMetrics {
+  summary: {
+    totalActivities: number;
+    callsMade: number;
+    emailsSent: number;
+    meetingsHeld: number;
+    tasksCompleted: number;
+  };
+  trend: Array<{
+    period: string;
+    calls: number;
+    emails: number;
+    meetings: number;
+    tasks: number;
+  }>;
+  byLead: Array<{
+    leadId: string;
+    leadName: string;
+    activityCount: number;
+  }>;
+}
+
+export interface SalesTrendData {
+  period: string;
+  label: string;
+  newLeads: number;
+  qualifiedLeads: number;
+  wonDeals: number;
+  revenue: number;
+}
+
+export interface TopPerformer {
+  id: string;
+  name: string;
+  value: number;
+  stage: string;
+  closingDate?: string;
+  probability?: number;
+}
+
+export interface SalesDateRange {
+  startDate: string;
+  endDate: string;
+}

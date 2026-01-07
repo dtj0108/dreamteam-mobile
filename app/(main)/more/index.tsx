@@ -6,17 +6,22 @@ import { Colors } from "@/constants/Colors";
 
 interface MenuItemProps {
   href: string;
-  icon: React.ComponentProps<typeof FontAwesome>["name"];
+  icon?: React.ComponentProps<typeof FontAwesome>["name"];
+  emoji?: string;
   title: string;
   description: string;
 }
 
-function MenuItem({ href, icon, title, description }: MenuItemProps) {
+function MenuItem({ href, icon, emoji, title, description }: MenuItemProps) {
   return (
     <Link href={href as any} asChild>
       <Pressable className="flex-row items-center border-b border-border p-4">
         <View className="mr-4 h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-          <FontAwesome name={icon} size={20} color={Colors.primary} />
+          {emoji ? (
+            <Text style={{ fontSize: 20 }}>{emoji}</Text>
+          ) : icon ? (
+            <FontAwesome name={icon} size={20} color={Colors.primary} />
+          ) : null}
         </View>
         <View className="flex-1">
           <Text className="text-base font-semibold text-foreground">
@@ -41,7 +46,7 @@ export default function MoreScreen() {
       />
       <MenuItem
         href="/(main)/more/ai"
-        icon="robot"
+        emoji="✨"
         title="AI Chat"
         description="Talk to AI agents"
       />

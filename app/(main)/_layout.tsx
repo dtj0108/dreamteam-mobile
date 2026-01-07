@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { View } from "react-native";
 
 import { ProductSwitcher } from "@/components/ProductSwitcher";
 import { Colors } from "@/constants/Colors";
@@ -8,10 +9,11 @@ export default function MainLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
-        headerLeft: () => <ProductSwitcher />,
-        headerLeftContainerStyle: {
-          paddingLeft: 16,
-        },
+        headerLeft: () => (
+          <View style={{ paddingLeft: 16 }}>
+            <ProductSwitcher />
+          </View>
+        ),
         headerTitle: "",
         headerStyle: {
           backgroundColor: Colors.background,
@@ -19,10 +21,11 @@ export default function MainLayout() {
         headerShadowVisible: false,
       }}
     >
+      <Stack.Screen name="hub" options={{ headerShown: false, animation: "fade" }} />
       <Stack.Screen name="finance" />
       <Stack.Screen name="sales" />
-      <Stack.Screen name="team" />
-      <Stack.Screen name="projects" />
+      <Stack.Screen name="team" options={{ headerShown: false }} />
+      <Stack.Screen name="projects" options={{ headerShown: false }} />
       <Stack.Screen name="more" />
     </Stack>
   );

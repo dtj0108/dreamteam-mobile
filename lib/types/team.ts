@@ -72,8 +72,8 @@ export interface Reaction {
 export interface Message {
   id: string;
   channel_id: string | null;
-  dm_id: string | null;
-  user_id: string;
+  dm_conversation_id: string | null;
+  sender_id: string;
   content: string;
   content_html: string | null;
   type: MessageType;
@@ -88,7 +88,7 @@ export interface Message {
   updated_at: string;
   deleted_at: string | null;
   // Joined relations
-  user?: MessageUser;
+  sender?: MessageUser;
 }
 
 export interface MessageUser {
@@ -459,7 +459,7 @@ export const isConsecutiveMessage = (
   thresholdMinutes = 5
 ): boolean => {
   if (!previousMsg) return false;
-  if (currentMsg.user_id !== previousMsg.user_id) return false;
+  if (currentMsg.sender_id !== previousMsg.sender_id) return false;
 
   const currentTime = new Date(currentMsg.created_at).getTime();
   const previousTime = new Date(previousMsg.created_at).getTime();

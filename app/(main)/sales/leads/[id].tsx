@@ -18,11 +18,13 @@ import {
   useUpdateLeadTask,
   useDeleteLeadTask,
   useDeleteLeadOpportunity,
+  useCreateLeadActivity,
 } from "../../../../lib/hooks/useLeads";
 import {
   LeadTask,
   LeadOpportunity,
   Activity,
+  ActivityType,
   getContactFullName,
   formatCurrency,
   getOpportunityStageLabel,
@@ -31,6 +33,8 @@ import {
   ACTIVITY_TYPE_ICONS,
 } from "../../../../lib/types/sales";
 import { StatusBadge } from "../../../../components/sales/StatusBadge";
+import { ActivityTimeline } from "../../../../components/sales/ActivityTimeline";
+import { QuickLogMenu } from "../../../../components/sales/QuickLogMenu";
 
 type Tab = "details" | "activity";
 
@@ -39,11 +43,12 @@ export default function LeadDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<Tab>("details");
 
-  const { data: lead, isLoading, error } = useLead(id);
+  const { data: lead, isLoading, error, refetch } = useLead(id);
   const deleteLeadMutation = useDeleteLead();
   const updateTaskMutation = useUpdateLeadTask();
   const deleteTaskMutation = useDeleteLeadTask();
   const deleteOpportunityMutation = useDeleteLeadOpportunity();
+  const createActivityMutation = useCreateLeadActivity();
 
   const handleBack = () => {
     router.back();
@@ -125,6 +130,34 @@ export default function LeadDetailScreen() {
         },
       },
     ]);
+  };
+
+  const handleQuickLogActivity = async (type: ActivityType) => {
+    try {
+      await createActivityMutation.mutateAsync({
+        leadId: id,
+        data: {
+          type,
+          subject: `Quick ${type}`,
+        },
+      });
+    } catch (error) {
+      Alert.alert("Error", "Failed to log activity");
+    }
+  };
+
+  const handleCustomLogActivity = () => {
+    router.push({
+      pathname: "/(main)/sales/activities/new",
+      params: { lead_id: id },
+    });
+  };
+
+  const handleLogActivityWithType = (type: ActivityType) => {
+    router.push({
+      pathname: "/(main)/sales/activities/new",
+      params: { lead_id: id, type },
+    });
   };
 
   if (isLoading) {
@@ -234,21 +267,33 @@ export default function LeadDetailScreen() {
       </View>
 
       {/* Tab content */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {activeTab === "details" ? (
+      {activeTab === "details" ? (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
           <DetailsTab
             lead={lead}
             onToggleTask={handleToggleTask}
             onDeleteTask={handleDeleteTask}
             onDeleteOpportunity={handleDeleteOpportunity}
           />
-        ) : (
-          <ActivityTab activities={lead.activities || []} />
-        )}
-      </ScrollView>
+        </ScrollView>
+      ) : (
+        <ActivityTimeline
+          activities={lead.activities || []}
+          onLogActivity={handleCustomLogActivity}
+          onRefresh={() => refetch()}
+        />
+      )}
+
+      {/* Quick Log FAB - only show on Activity tab */}
+      {activeTab === "activity" && (
+        <QuickLogMenu
+          onLogActivity={handleLogActivityWithType}
+          onCustomLog={handleCustomLogActivity}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -486,59 +531,3 @@ function DetailsTab({
   );
 }
 
-// Activity Tab Component
-function ActivityTab({ activities }: { activities: Activity[] }) {
-  if (activities.length === 0) {
-    return (
-      <View className="flex-1 items-center justify-center py-12">
-        <FontAwesome name="history" size={48} color="#d1d5db" />
-        <Text className="mt-4 text-lg font-medium text-foreground">
-          No activity yet
-        </Text>
-        <Text className="mt-1 text-center text-muted-foreground">
-          Activities will appear here as you{"\n"}interact with this lead
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View className="px-4 py-4">
-      {activities.map((activity, index) => (
-        <View key={activity.id} className="flex-row mb-4">
-          {/* Timeline line */}
-          <View className="items-center mr-3">
-            <View
-              className="h-8 w-8 items-center justify-center rounded-full"
-              style={{ backgroundColor: ACTIVITY_TYPE_COLORS[activity.type] + "20" }}
-            >
-              <FontAwesome
-                name={ACTIVITY_TYPE_ICONS[activity.type] as any}
-                size={14}
-                color={ACTIVITY_TYPE_COLORS[activity.type]}
-              />
-            </View>
-            {index < activities.length - 1 && (
-              <View className="w-0.5 flex-1 bg-muted mt-1" />
-            )}
-          </View>
-
-          {/* Content */}
-          <View className="flex-1 pb-4">
-            <Text className="font-medium text-foreground">
-              {activity.subject || activity.type}
-            </Text>
-            {activity.description && (
-              <Text className="mt-1 text-sm text-muted-foreground">
-                {activity.description}
-              </Text>
-            )}
-            <Text className="mt-1 text-xs text-muted-foreground">
-              {new Date(activity.created_at).toLocaleString()}
-            </Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}

@@ -1,7 +1,7 @@
 import { View, Text, Pressable } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import {
   ChannelWithMembership,
   formatMessageTime,

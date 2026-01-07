@@ -50,7 +50,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       setWorkspaces([]);
       setCurrentWorkspace(null);
-      AsyncStorage.removeItem(WORKSPACE_ID_KEY);
+      await AsyncStorage.removeItem(WORKSPACE_ID_KEY);
       setIsLoading(false);
       return;
     }
@@ -138,6 +138,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
               if (error) {
                 console.error("Error updating default workspace:", error);
               }
+            })
+            .catch((error) => {
+              console.error("Error updating default workspace:", error);
             });
         }
       }

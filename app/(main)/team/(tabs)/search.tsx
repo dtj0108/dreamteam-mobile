@@ -7,16 +7,20 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import Colors from "@/constants/Colors";
+import { ProductSwitcher } from "@/components/ProductSwitcher";
+
+import { Colors } from "@/constants/Colors";
 import { useMessageSearch, useChannels } from "@/lib/hooks/useTeam";
 import { SearchFilters, SearchResult } from "@/lib/types/team";
 import { SearchResultItem } from "@/components/team/SearchResultItem";
 
 export default function SearchScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [filters, setFilters] = useState<SearchFilters>({});
@@ -82,8 +86,13 @@ export default function SearchScreen() {
   ].filter(Boolean).length;
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Header with Search */}
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      {/* Header with ProductSwitcher */}
+      <View className="px-4 py-2">
+        <ProductSwitcher />
+      </View>
+
+      {/* Search Bar */}
       <View className="border-b border-border px-4 py-4">
         <View className="flex-row items-center">
           {/* Search Input */}

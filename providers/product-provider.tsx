@@ -48,8 +48,11 @@ export const PRODUCTS: Product[] = [
   },
 ];
 
-export function useCurrentProduct(): Product {
+export function useCurrentProduct(): Product | null {
   const pathname = usePathname();
+
+  // Return null when on hub to indicate no product selected
+  if (pathname.startsWith("/hub")) return null;
 
   if (pathname.startsWith("/sales")) return PRODUCTS[1];
   if (pathname.startsWith("/team")) return PRODUCTS[2];

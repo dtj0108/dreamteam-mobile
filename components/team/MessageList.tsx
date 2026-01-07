@@ -7,9 +7,9 @@ import {
   ActivityIndicator,
   ListRenderItem,
 } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import {
   Message,
   isConsecutiveMessage,
@@ -52,8 +52,6 @@ export function MessageList({
   const handleScroll = useCallback(
     (event: { nativeEvent: { contentOffset: { y: number } } }) => {
       const offsetY = event.nativeEvent.contentOffset.y;
-      // Show button if scrolled more than 200px from bottom
-      // In inverted list, this means scrolled up
       setShowScrollButton(offsetY > 200);
     },
     []
@@ -67,7 +65,7 @@ export function MessageList({
   const renderItem: ListRenderItem<Message> = useCallback(
     ({ item, index }) => {
       const previousMessage = messages[index + 1]; // +1 because list is inverted
-      const isOwn = item.user_id === user?.id;
+      const isOwn = item.sender_id === user?.id;
       const showAvatar = !isConsecutiveMessage(item, previousMessage);
       const showDateSeparator = shouldShowDateSeparator(item, previousMessage);
 
@@ -84,13 +82,12 @@ export function MessageList({
             onThreadPress={() => onThreadPress(item)}
             onReactionPress={(emoji) => onReactionPress(item, emoji)}
           />
+          {/* Date separator - bold left-aligned text */}
           {showDateSeparator && (
-            <View className="my-4 flex-row items-center">
-              <View className="h-px flex-1 bg-border" />
-              <Text className="mx-4 text-xs font-medium text-muted-foreground">
+            <View className="px-4 pb-2 pt-4">
+              <Text className="text-sm font-semibold text-foreground">
                 {formatDateSeparator(item.created_at)}
               </Text>
-              <View className="h-px flex-1 bg-border" />
             </View>
           )}
         </>
@@ -121,7 +118,7 @@ export function MessageList({
         className="flex-1 items-center justify-center py-12"
         style={{ transform: [{ scaleY: -1 }] }}
       >
-        <FontAwesome name="comments-o" size={48} color="#d1d5db" />
+        <Ionicons name="chatbubbles-outline" size={48} color="#d1d5db" />
         <Text className="mt-4 text-lg font-medium text-foreground">
           No messages yet
         </Text>
@@ -135,7 +132,7 @@ export function MessageList({
   const keyExtractor = useCallback((item: Message) => item.id, []);
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-white">
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -143,7 +140,6 @@ export function MessageList({
         keyExtractor={keyExtractor}
         inverted
         contentContainerStyle={{
-          paddingHorizontal: 16,
           paddingTop: 16,
           flexGrow: 1,
         }}
@@ -162,10 +158,10 @@ export function MessageList({
       {/* Scroll to bottom button */}
       {showScrollButton && (
         <Pressable
-          className="absolute bottom-4 right-4 h-10 w-10 items-center justify-center rounded-full bg-primary shadow-lg active:opacity-70"
+          className="absolute bottom-4 right-4 h-10 w-10 items-center justify-center rounded-full bg-gray-800 shadow-lg active:opacity-70"
           onPress={scrollToBottom}
         >
-          <FontAwesome name="chevron-down" size={16} color="white" />
+          <Ionicons name="chevron-down" size={20} color="white" />
         </Pressable>
       )}
     </View>

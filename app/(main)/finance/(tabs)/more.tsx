@@ -25,21 +25,21 @@ export default function MoreScreen() {
             iconColor="#22c55e"
             title="Goals"
             subtitle="Track revenue, profit & exit planning"
-            onPress={() => {}}
+            onPress={() => router.push("/(main)/finance/goals")}
           />
           <MenuItem
             icon="repeat"
             iconColor="#8b5cf6"
             title="Subscriptions"
             subtitle="Manage recurring payments"
-            onPress={() => {}}
+            onPress={() => router.push("/(main)/finance/subscriptions")}
           />
           <MenuItem
             icon="bar-chart"
             iconColor="#0ea5e9"
             title="Analytics"
             subtitle="Reports & financial insights"
-            onPress={() => {}}
+            onPress={() => router.push("/(main)/finance/analytics")}
           />
           <MenuItem
             icon="dashboard"

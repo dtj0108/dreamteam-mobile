@@ -1,5 +1,5 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { GlassView } from "expo-glass-effect";
+import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import {
   Animated,
@@ -53,13 +53,14 @@ export function WorkspaceDrawer({ visible, onClose }: WorkspaceDrawerProps) {
     >
       <View className="flex-1 flex-row">
         {/* Drawer */}
-        <GlassView
+        <BlurView
+          intensity={80}
+          tint="light"
           style={{
             width: DRAWER_WIDTH,
             flex: 1,
-            backgroundColor: "rgba(255, 255, 255, 0.95)",
+            backgroundColor: "rgba(255, 255, 255, 0.85)",
           }}
-          tintColor="systemChromeMaterial"
         >
           <View
             style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom }}
@@ -105,7 +106,7 @@ export function WorkspaceDrawer({ visible, onClose }: WorkspaceDrawerProps) {
               />
             </View>
           </View>
-        </GlassView>
+        </BlurView>
 
         {/* Backdrop */}
         <Pressable

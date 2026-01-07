@@ -1,10 +1,68 @@
-import { memo } from "react";
-import { View, Text, Pressable, Image } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { memo, useMemo } from "react";
+import { View, Text, Pressable, Image, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { Message, formatMessageTimestamp } from "@/lib/types/team";
 import { ReactionBar } from "./ReactionBar";
+
+// Simple markdown parser for message content
+function parseMarkdown(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let remaining = text;
+  let key = 0;
+
+  // Pattern order matters - check longer patterns first
+  const patterns = [
+    { regex: /\*\*(.+?)\*\*/g, style: styles.bold },          // **bold**
+    { regex: /\*(.+?)\*/g, style: styles.italic },            // *italic*
+    { regex: /_(.+?)_/g, style: styles.italic },              // _italic_
+    { regex: /`(.+?)`/g, style: styles.code },                // `code`
+    { regex: /~~(.+?)~~/g, style: styles.strikethrough },     // ~~strikethrough~~
+  ];
+
+  // Combined regex to find any markdown
+  const combinedRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_|`[^`]+`|~~[^~]+~~)/g;
+
+  const matches = text.split(combinedRegex);
+
+  for (const part of matches) {
+    if (!part) continue;
+
+    let matched = false;
+    for (const { regex, style } of patterns) {
+      regex.lastIndex = 0;
+      const match = regex.exec(part);
+      if (match && match[0] === part) {
+        parts.push(
+          <Text key={key++} style={style}>
+            {match[1]}
+          </Text>
+        );
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      parts.push(<Text key={key++}>{part}</Text>);
+    }
+  }
+
+  return parts;
+}
+
+const styles = StyleSheet.create({
+  bold: { fontWeight: "700" },
+  italic: { fontStyle: "italic" },
+  code: {
+    fontFamily: "monospace",
+    backgroundColor: "#f1f5f9",
+    paddingHorizontal: 4,
+    borderRadius: 4,
+  },
+  strikethrough: { textDecorationLine: "line-through" },
+});
 
 interface MessageItemProps {
   message: Message;
@@ -12,6 +70,7 @@ interface MessageItemProps {
   showAvatar: boolean;
   showTimestamp: boolean;
   isInThread?: boolean;
+  isApp?: boolean; // For bot/integration messages - shows APP badge
   onPress: () => void;
   onLongPress: () => void;
   onThreadPress: () => void;
@@ -24,6 +83,7 @@ function MessageItemComponent({
   showAvatar,
   showTimestamp,
   isInThread = false,
+  isApp = false,
   onPress,
   onLongPress,
   onThreadPress,
@@ -49,25 +109,23 @@ function MessageItemComponent({
 
   return (
     <Pressable
-      className={`mb-1 flex-row ${showAvatar ? "mt-2" : ""}`}
+      className={`flex-row px-4 py-1 ${showAvatar ? "pt-3" : ""}`}
       onPress={onPress}
       onLongPress={onLongPress}
     >
-      {/* Avatar placeholder */}
-      <View className="mr-3 w-9">
+      {/* Avatar - rounded square, 40x40 */}
+      <View className="mr-3 w-10">
         {showAvatar && (
-          <View className="h-9 w-9 items-center justify-center rounded-full bg-muted">
-            {message.user?.avatar_url ? (
+          <View className="h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-muted">
+            {message.sender?.avatar_url ? (
               <Image
-                source={{ uri: message.user.avatar_url }}
-                className="h-9 w-9 rounded-full"
+                source={{ uri: message.sender.avatar_url }}
+                className="h-10 w-10 rounded-lg"
               />
             ) : (
-              <FontAwesome
-                name="user"
-                size={16}
-                color={Colors.mutedForeground}
-              />
+              <Text className="text-lg font-semibold text-muted-foreground">
+                {(message.sender?.name || "U").charAt(0).toUpperCase()}
+              </Text>
             )}
           </View>
         )}
@@ -75,37 +133,35 @@ function MessageItemComponent({
 
       {/* Message Content */}
       <View className="flex-1">
-        {/* Header (name + timestamp) */}
-        {showTimestamp && (
-          <View className="mb-1 flex-row items-center">
+        {/* Header row: Name + APP badge + Timestamp */}
+        {showAvatar && (
+          <View className="mb-0.5 flex-row items-center">
             <Text className="font-semibold text-foreground">
-              {message.user?.name || "Unknown"}
+              {message.sender?.name || "Unknown"}
             </Text>
-            <Text className="ml-2 text-xs text-muted-foreground">
+            {isApp && (
+              <View className="ml-2 rounded bg-gray-200 px-1.5 py-0.5">
+                <Text className="text-xs font-medium text-gray-600">APP</Text>
+              </View>
+            )}
+            <Text className="ml-2 text-sm text-muted-foreground">
               {formatMessageTimestamp(message.created_at)}
             </Text>
             {isPinned && (
               <View className="ml-2 flex-row items-center">
-                <FontAwesome
-                  name="thumb-tack"
-                  size={10}
-                  color={Colors.primary}
-                />
-                <Text className="ml-1 text-xs text-primary">Pinned</Text>
+                <Ionicons name="pin" size={12} color={Colors.primary} />
               </View>
             )}
           </View>
         )}
 
-        {/* Message text */}
-        <View className="flex-row flex-wrap">
-          <Text className="text-foreground">
-            {message.content}
-            {isEdited && (
-              <Text className="text-xs text-muted-foreground"> (edited)</Text>
-            )}
-          </Text>
-        </View>
+        {/* Message text - no bubble, flat design with markdown */}
+        <Text className="text-foreground leading-5">
+          {parseMarkdown(message.content)}
+          {isEdited && (
+            <Text className="text-xs text-muted-foreground"> (edited)</Text>
+          )}
+        </Text>
 
         {/* Attachments */}
         {hasAttachments && (
@@ -125,8 +181,8 @@ function MessageItemComponent({
                   </Pressable>
                 ) : (
                   <View className="flex-row items-center rounded-lg bg-muted p-3">
-                    <FontAwesome
-                      name="file-o"
+                    <Ionicons
+                      name="document-outline"
                       size={20}
                       color={Colors.primary}
                     />
@@ -141,9 +197,9 @@ function MessageItemComponent({
                         {formatFileSize(attachment.size)}
                       </Text>
                     </View>
-                    <FontAwesome
-                      name="download"
-                      size={16}
+                    <Ionicons
+                      name="download-outline"
+                      size={18}
                       color={Colors.primary}
                     />
                   </View>
@@ -168,7 +224,7 @@ function MessageItemComponent({
             className="mt-2 flex-row items-center"
             onPress={onThreadPress}
           >
-            <FontAwesome name="reply" size={12} color={Colors.primary} />
+            <Ionicons name="chatbubble-outline" size={14} color={Colors.primary} />
             <Text className="ml-2 text-sm font-medium text-primary">
               {message.reply_count} {message.reply_count === 1 ? "reply" : "replies"}
             </Text>
@@ -190,7 +246,6 @@ function formatFileSize(bytes: number): string {
 
 // Memoize to prevent unnecessary re-renders
 export const MessageItem = memo(MessageItemComponent, (prevProps, nextProps) => {
-  // Only re-render if these props change
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.content === nextProps.message.content &&
@@ -200,6 +255,7 @@ export const MessageItem = memo(MessageItemComponent, (prevProps, nextProps) => 
     prevProps.message.reactions === nextProps.message.reactions &&
     prevProps.isOwn === nextProps.isOwn &&
     prevProps.showAvatar === nextProps.showAvatar &&
-    prevProps.showTimestamp === nextProps.showTimestamp
+    prevProps.showTimestamp === nextProps.showTimestamp &&
+    prevProps.isApp === nextProps.isApp
   );
 });

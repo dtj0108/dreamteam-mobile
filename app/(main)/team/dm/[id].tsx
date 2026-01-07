@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -8,18 +8,19 @@ import {
   ActivityIndicator,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { FontAwesome } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import {
   useDMConversation,
   useDMMessages,
   useSendDMMessage,
   useToggleMuteDM,
 } from "@/lib/hooks/useTeam";
-import { useDMSubscription } from "@/providers/team-provider";
+import { useDMSubscription, useTeam } from "@/providers/team-provider";
 import { Message, getMemberDisplayName } from "@/lib/types/team";
 import { MessageList } from "@/components/team/MessageList";
 import { MessageInput } from "@/components/team/MessageInput";
@@ -28,9 +29,23 @@ import { PresenceIndicator } from "@/components/team/PresenceIndicator";
 export default function DMViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
+  // Hide parent header
+  useLayoutEffect(() => {
+    navigation.getParent()?.getParent()?.setOptions({ headerShown: false });
+    return () => {
+      navigation.getParent()?.getParent()?.setOptions({ headerShown: true });
+    };
+  }, [navigation]);
 
   // Subscribe to real-time updates
   useDMSubscription(id);
+
+  // Typing indicator
+  const { sendTyping, getTypingIndicator } = useTeam();
+  const typingText = id ? getTypingIndicator(id) : "";
 
   // Fetch DM and messages
   const { data: dm, isLoading: dmLoading } = useDMConversation(id);
@@ -98,97 +113,124 @@ export default function DMViewScreen() {
   );
 
   const handleTyping = useCallback(() => {
-    // Typing indicator handled by provider
+    if (id) {
+      sendTyping(id, true);
+    }
+  }, [id, sendTyping]);
+
+  const handleAttachmentPress = useCallback(() => {
+    // TODO: Open attachment picker
+    console.log("Open attachment picker");
+  }, []);
+
+  const handleMicrophonePress = useCallback(() => {
+    // TODO: Start voice recording
+    console.log("Start voice recording");
+  }, []);
+
+  const handleSettingsPress = useCallback(() => {
+    // TODO: Show DM settings
+    console.log("Show DM settings");
   }, []);
 
   if (!id) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+      <View className="flex-1 items-center justify-center bg-background">
         <Text className="text-muted-foreground">Conversation not found</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? -20 : 0}
       >
         {/* Header */}
-        <View className="flex-row items-center border-b border-border px-4 py-3">
-          <Pressable
-            className="mr-3 h-8 w-8 items-center justify-center rounded-full active:bg-muted"
-            onPress={handleBack}
-          >
-            <FontAwesome
-              name="chevron-left"
-              size={16}
-              color={Colors.foreground}
-            />
-          </Pressable>
+        <View className="border-b border-border bg-background">
+          <View className="flex-row items-center px-4 py-3">
+            {/* Back Button */}
+            <Pressable
+              className="mr-3 h-8 w-8 items-center justify-center rounded-full active:bg-muted"
+              onPress={handleBack}
+            >
+              <Ionicons name="chevron-back" size={24} color="#0f172a" />
+            </Pressable>
 
-          {participant ? (
-            <>
-              {/* Avatar with presence */}
-              <View className="relative">
-                {participant.user.avatar_url ? (
-                  <Image
-                    source={{ uri: participant.user.avatar_url }}
-                    className="h-10 w-10 rounded-full"
-                  />
-                ) : (
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-                    <FontAwesome
-                      name="user"
-                      size={16}
-                      color={Colors.mutedForeground}
+            {participant ? (
+              <>
+                {/* Avatar with presence - rounded square */}
+                <View className="relative">
+                  {participant.user.avatar_url ? (
+                    <Image
+                      source={{ uri: participant.user.avatar_url }}
+                      className="h-10 w-10 rounded-lg"
                     />
-                  </View>
-                )}
-                {participant.presence && (
-                  <View className="absolute -bottom-0.5 -right-0.5">
-                    <PresenceIndicator
-                      status={participant.presence.status}
-                      size="sm"
+                  ) : (
+                    <View className="h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                      <Text className="text-lg font-semibold text-muted-foreground">
+                        {(participant.user.name || "U").charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  {participant.presence && (
+                    <View className="absolute -bottom-0.5 -right-0.5">
+                      <PresenceIndicator
+                        status={participant.presence.status}
+                        size="sm"
+                      />
+                    </View>
+                  )}
+                </View>
+
+                {/* User Info */}
+                <View className="ml-3 flex-1">
+                  <Text className="text-base font-semibold text-foreground">
+                    {getMemberDisplayName(participant)}
+                  </Text>
+                  <Text className="text-sm text-muted-foreground">
+                    {participant.presence?.status_message ||
+                      (participant.presence?.status === "online"
+                        ? "Online"
+                        : participant.presence?.status === "away"
+                        ? "Away"
+                        : participant.presence?.status === "dnd"
+                        ? "Do Not Disturb"
+                        : "Offline")}
+                  </Text>
+                </View>
+
+                {/* Action Icons */}
+                <View className="flex-row items-center gap-1">
+                  {/* Mute Toggle */}
+                  <Pressable
+                    className="h-9 w-9 items-center justify-center rounded-full active:bg-muted"
+                    onPress={handleMuteToggle}
+                  >
+                    <Ionicons
+                      name={dm?.is_muted ? "notifications-off-outline" : "notifications-outline"}
+                      size={22}
+                      color="#64748b"
                     />
-                  </View>
-                )}
-              </View>
+                  </Pressable>
 
-              {/* User Info */}
-              <View className="ml-3 flex-1">
-                <Text className="font-semibold text-foreground">
-                  {getMemberDisplayName(participant)}
-                </Text>
-                <Text className="text-sm text-muted-foreground">
-                  {participant.presence?.status_message ||
-                    (participant.presence?.status === "online"
-                      ? "Online"
-                      : participant.presence?.status === "away"
-                      ? "Away"
-                      : participant.presence?.status === "dnd"
-                      ? "Do Not Disturb"
-                      : "Offline")}
-                </Text>
-              </View>
-
-              {/* Actions */}
-              <Pressable
-                className="h-8 w-8 items-center justify-center rounded-full active:bg-muted"
-                onPress={handleMuteToggle}
-              >
-                <FontAwesome
-                  name={dm?.is_muted ? "bell-slash" : "bell-o"}
-                  size={18}
-                  color={Colors.mutedForeground}
-                />
-              </Pressable>
-            </>
-          ) : (
-            <ActivityIndicator size="small" color={Colors.primary} />
-          )}
+                  {/* Settings */}
+                  <Pressable
+                    className="h-9 w-9 items-center justify-center rounded-full active:bg-muted"
+                    onPress={handleSettingsPress}
+                  >
+                    <Ionicons name="options-outline" size={22} color="#64748b" />
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              isLoading && (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              )
+            )}
+          </View>
         </View>
 
         {/* Messages */}
@@ -209,6 +251,15 @@ export default function DMViewScreen() {
           />
         )}
 
+        {/* Typing Indicator */}
+        {typingText ? (
+          <View className="px-4 py-1">
+            <Text className="text-sm italic text-muted-foreground">
+              {typingText}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Message Input */}
         <MessageInput
           dmId={id}
@@ -217,9 +268,11 @@ export default function DMViewScreen() {
           }`}
           onSend={handleSend}
           onTyping={handleTyping}
+          onAttachmentPress={handleAttachmentPress}
+          onMicrophonePress={handleMicrophonePress}
           disabled={sendMessageMutation.isPending}
         />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }

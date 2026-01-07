@@ -10,13 +10,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { AnimatedSplash } from "@/components/hub/AnimatedSplash";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "@/providers/auth-provider";
 import { WorkspaceProvider } from "@/providers/workspace-provider";
+import { TeamProvider } from "@/providers/team-provider";
+// import { NotificationProvider } from "@/providers/notification-provider"; // TODO: Enable after configuring push in Apple Developer
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -74,8 +77,14 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
 
+  // Track animated splash completion
+  const [splashComplete, setSplashComplete] = useState(false);
+
+  // Ready when BOTH auth loaded AND splash done
+  const isReady = !isLoading && splashComplete;
+
   useEffect(() => {
-    if (isLoading) return;
+    if (!isReady) return;
 
     const inAuthGroup = segments[0] === "(auth)";
 
@@ -84,20 +93,24 @@ function RootLayoutNav() {
       router.replace("/(auth)/login");
     } else if (session && inAuthGroup) {
       // Redirect to main app if authenticated
-      router.replace("/(main)/finance");
+      router.replace("/(main)/hub");
     }
-  }, [session, segments, isLoading, router]);
-
-  // Show nothing while loading auth state
-  if (isLoading) {
-    return null;
-  }
+  }, [session, segments, isReady, router]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <WorkspaceProvider>
-          <Slot />
+          {/* TODO: Re-enable NotificationProvider after configuring push in Apple Developer */}
+          <TeamProvider>
+            {/* Always render Slot - screens pre-mount behind splash */}
+            <Slot />
+
+            {/* Animated splash overlay until ready */}
+            {!isReady && (
+              <AnimatedSplash onComplete={() => setSplashComplete(true)} />
+            )}
+          </TeamProvider>
         </WorkspaceProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

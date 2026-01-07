@@ -140,6 +140,92 @@ export interface AnalyticsOverview {
     profit: number;
   };
   totalBalance: number;
+  trend?: TrendDataPoint[];
+}
+
+export interface TrendDataPoint {
+  month: string; // "2024-01"
+  label: string; // "Jan"
+  income: number;
+  expenses: number;
+  profit: number;
+}
+
+export interface CategoryBreakdown {
+  name: string;
+  amount: number;
+  color: string;
+  count: number;
+  percentage?: number;
+}
+
+export interface MonthlyTrendItem {
+  month: string;
+  label: string;
+  amount: number;
+}
+
+export interface ExpenseAnalysis {
+  summary: {
+    totalExpenses: number;
+    transactionCount: number;
+    categoryCount: number;
+    avgMonthly: number;
+  };
+  byCategory: CategoryBreakdown[];
+  monthlyTrend: MonthlyTrendItem[];
+}
+
+export interface IncomeAnalysis {
+  summary: {
+    totalIncome: number;
+    transactionCount: number;
+    categoryCount: number;
+    avgMonthly: number;
+  };
+  byCategory: CategoryBreakdown[];
+  monthlyTrend: MonthlyTrendItem[];
+}
+
+export interface ProfitLossReport {
+  summary: {
+    totalIncome: number;
+    totalExpenses: number;
+    netProfit: number;
+    profitMargin: number;
+  };
+  incomeByCategory: CategoryBreakdown[];
+  expensesByCategory: CategoryBreakdown[];
+  comparison: {
+    income: { previous: number; change: number; percentChange: number };
+    expenses: { previous: number; change: number; percentChange: number };
+    profit: { previous: number; change: number; percentChange: number };
+  };
+}
+
+export interface CashFlowPeriod {
+  period: string;
+  inflow: number;
+  outflow: number;
+  netFlow: number;
+  runningBalance: number;
+}
+
+export interface CashFlowReport {
+  summary: {
+    totalInflow: number;
+    totalOutflow: number;
+    netCashFlow: number;
+    averageNetFlow: number;
+  };
+  trend: CashFlowPeriod[];
+}
+
+export type CashFlowGroupBy = "day" | "week" | "month";
+
+export interface DateRange {
+  startDate: string;
+  endDate: string;
 }
 
 export interface AccountTotals {
@@ -175,4 +261,45 @@ export const getTransactionColor = (amount: number): string => {
   if (amount > 0) return "#22c55e"; // green for income
   if (amount < 0) return "#ef4444"; // red for expense
   return "#6b7280"; // gray for zero/transfer
+};
+
+// Goal type colors
+export const GOAL_TYPE_COLORS: Record<GoalType, string> = {
+  revenue: "#22c55e", // green
+  profit: "#0ea5e9", // blue
+  valuation: "#8b5cf6", // purple
+  runway: "#f59e0b", // amber
+  revenue_multiple: "#ec4899", // pink
+};
+
+// Goal type labels
+export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
+  revenue: "Revenue",
+  profit: "Profit",
+  valuation: "Valuation",
+  runway: "Runway",
+  revenue_multiple: "Revenue Multiple",
+};
+
+// Calculate goal progress percentage
+export const getGoalProgress = (goal: Goal): number => {
+  if (goal.target_amount === 0) return 0;
+  return Math.min((goal.current_amount / goal.target_amount) * 100, 100);
+};
+
+// Check if goal is on track based on time elapsed vs progress
+export const isGoalOnTrack = (goal: Goal): boolean => {
+  if (!goal.end_date || goal.is_achieved) return true;
+
+  const start = new Date(goal.start_date).getTime();
+  const end = new Date(goal.end_date).getTime();
+  const now = Date.now();
+
+  if (now >= end) return goal.is_achieved;
+  if (now <= start) return true;
+
+  const timeProgress = ((now - start) / (end - start)) * 100;
+  const amountProgress = getGoalProgress(goal);
+
+  return amountProgress >= timeProgress - 10; // 10% tolerance
 };

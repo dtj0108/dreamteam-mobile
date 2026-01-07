@@ -7,6 +7,10 @@ export default function SalesTabsLayout() {
         <Icon sf={{ default: "square.grid.2x2", selected: "square.grid.2x2.fill" }} />
         <Label>Pipeline</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="deals">
+        <Icon sf={{ default: "dollarsign.circle", selected: "dollarsign.circle.fill" }} />
+        <Label>Deals</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="leads">
         <Icon sf={{ default: "building.2", selected: "building.2.fill" }} />
         <Label>Leads</Label>

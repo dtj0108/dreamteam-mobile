@@ -47,6 +47,10 @@ interface TeamContextType {
   setActiveChannel: (id: string | null) => void;
   setActiveDM: (id: string | null) => void;
 
+  // Realtime subscriptions
+  subscribeToMessages: (channelOrDmId: string, isDM?: boolean) => void;
+  unsubscribeFromMessages: (channelOrDmId: string, isDM?: boolean) => void;
+
   // Connection status
   isConnected: boolean;
 }
@@ -91,7 +95,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const messageChannelsRef = useRef<Map<string, ReturnType<typeof supabase.channel>>>(
     new Map()
   );
-  const typingTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const typingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastTypingRef = useRef<number>(0);
 
   // ============================================================================
@@ -275,7 +279,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       if (messageChannelsRef.current.has(key)) return;
 
       const filter = isDM
-        ? `dm_id=eq.${channelOrDmId}`
+        ? `dm_conversation_id=eq.${channelOrDmId}`
         : `channel_id=eq.${channelOrDmId}`;
 
       const channel = supabase
@@ -306,7 +310,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
             if (
               eventType === "INSERT" &&
               newMessage &&
-              (newMessage as { user_id: string }).user_id !== user?.id
+              (newMessage as { sender_id: string }).sender_id !== user?.id
             ) {
               const isActive = isDM
                 ? activeDMId === channelOrDmId
@@ -388,7 +392,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         const newOnlineUsers = new Map<string, UserPresence>();
 
         Object.entries(state).forEach(([, presences]) => {
-          (presences as Array<{
+          (presences as unknown as Array<{
             user_id: string;
             status: PresenceStatus;
             status_message: string | null;
@@ -411,7 +415,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       .on("presence", { event: "join" }, ({ newPresences }) => {
         setOnlineUsers((prev) => {
           const newMap = new Map(prev);
-          (newPresences as Array<{
+          (newPresences as unknown as Array<{
             user_id: string;
             status: PresenceStatus;
             status_message: string | null;
@@ -433,7 +437,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       .on("presence", { event: "leave" }, ({ leftPresences }) => {
         setOnlineUsers((prev) => {
           const newMap = new Map(prev);
-          (leftPresences as Array<{ user_id: string }>).forEach((presence) => {
+          (leftPresences as unknown as Array<{ user_id: string }>).forEach((presence) => {
             newMap.delete(presence.user_id);
           });
           return newMap;
@@ -531,6 +535,10 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     setActiveChannel,
     setActiveDM,
 
+    // Realtime subscriptions
+    subscribeToMessages,
+    unsubscribeFromMessages,
+
     // Connection
     isConnected,
   };
@@ -558,34 +566,38 @@ export function useTeam() {
  * Hook to subscribe to a specific channel's messages in realtime
  */
 export function useChannelSubscription(channelId: string | null) {
-  const { setActiveChannel } = useTeam();
+  const { setActiveChannel, subscribeToMessages, unsubscribeFromMessages } = useTeam();
 
   useEffect(() => {
     if (channelId) {
       setActiveChannel(channelId);
+      subscribeToMessages(channelId, false);
     }
     return () => {
       if (channelId) {
         setActiveChannel(null);
+        unsubscribeFromMessages(channelId, false);
       }
     };
-  }, [channelId, setActiveChannel]);
+  }, [channelId, setActiveChannel, subscribeToMessages, unsubscribeFromMessages]);
 }
 
 /**
  * Hook to subscribe to a specific DM's messages in realtime
  */
 export function useDMSubscription(dmId: string | null) {
-  const { setActiveDM } = useTeam();
+  const { setActiveDM, subscribeToMessages, unsubscribeFromMessages } = useTeam();
 
   useEffect(() => {
     if (dmId) {
       setActiveDM(dmId);
+      subscribeToMessages(dmId, true);
     }
     return () => {
       if (dmId) {
         setActiveDM(null);
+        unsubscribeFromMessages(dmId, true);
       }
     };
-  }, [dmId, setActiveDM]);
+  }, [dmId, setActiveDM, subscribeToMessages, unsubscribeFromMessages]);
 }

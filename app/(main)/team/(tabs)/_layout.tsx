@@ -4,20 +4,20 @@ export default function TeamTabsLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "number", selected: "number" }} />
-        <Label>Channels</Label>
+        <Icon sf={{ default: "house", selected: "house.fill" }} />
+        <Label>Home</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="dms">
-        <Icon sf={{ default: "bubble.left", selected: "bubble.left.fill" }} />
+        <Icon sf={{ default: "bubble.left.and.bubble.right", selected: "bubble.left.and.bubble.right.fill" }} />
         <Label>DMs</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="mentions">
-        <Icon sf={{ default: "at", selected: "at" }} />
-        <Label>Mentions</Label>
+      <NativeTabs.Trigger name="activity">
+        <Icon sf={{ default: "bell", selected: "bell.fill" }} />
+        <Label>Activity</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="agents">
-        <Icon sf={{ default: "cpu", selected: "cpu.fill" }} />
-        <Label>Agents</Label>
+      <NativeTabs.Trigger name="more">
+        <Icon sf={{ default: "ellipsis", selected: "ellipsis" }} />
+        <Label>More</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="search">
         <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />

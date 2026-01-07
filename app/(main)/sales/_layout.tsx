@@ -7,6 +7,10 @@ export default function SalesLayout() {
       <Stack.Screen name="leads/[id]" />
       <Stack.Screen name="leads/new" />
       <Stack.Screen name="contacts/new" />
+      <Stack.Screen name="activities/new" />
+      <Stack.Screen name="deals/[id]" />
+      <Stack.Screen name="deals/new" />
+      <Stack.Screen name="reports" />
     </Stack>
   );
 }

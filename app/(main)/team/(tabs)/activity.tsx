@@ -7,10 +7,13 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import Colors from "@/constants/Colors";
+import { ProductSwitcher } from "@/components/ProductSwitcher";
+
+import { Colors } from "@/constants/Colors";
 import {
   useMentions,
   useMarkMentionRead,
@@ -23,6 +26,7 @@ type FilterType = "all" | "unread";
 
 export default function MentionsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<FilterType>("all");
 
   // Fetch mentions
@@ -108,8 +112,13 @@ export default function MentionsScreen() {
   );
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      {/* Header with ProductSwitcher */}
+      <View className="px-4 py-2">
+        <ProductSwitcher />
+      </View>
+
+      {/* Content Header */}
       <View className="px-4 py-4">
         <View className="flex-row items-center justify-between">
           <View>

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -9,17 +9,28 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { useCreateChannel } from "@/lib/hooks/useTeam";
 import { ChannelType } from "@/lib/types/team";
 
 export default function NewChannelScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const createChannelMutation = useCreateChannel();
+
+  // Hide parent header
+  useLayoutEffect(() => {
+    navigation.getParent()?.getParent()?.setOptions({ headerShown: false });
+    return () => {
+      navigation.getParent()?.getParent()?.setOptions({ headerShown: true });
+    };
+  }, [navigation]);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -64,7 +75,7 @@ export default function NewChannelScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {/* Header */}
       <View className="flex-row items-center border-b border-border px-4 py-3">
         <Pressable
@@ -205,6 +216,6 @@ export default function NewChannelScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

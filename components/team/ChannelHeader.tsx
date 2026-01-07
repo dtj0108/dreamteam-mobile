@@ -1,7 +1,6 @@
 import { View, Text, Pressable } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
-import Colors from "@/constants/Colors";
 import { Channel } from "@/lib/types/team";
 
 interface ChannelHeaderProps {
@@ -10,10 +9,7 @@ interface ChannelHeaderProps {
   onBack: () => void;
   onMembersPress: () => void;
   onSettingsPress: () => void;
-  onStarToggle: () => void;
-  onMuteToggle: () => void;
-  isStarred?: boolean;
-  isMuted?: boolean;
+  onHuddlePress?: () => void;
 }
 
 export function ChannelHeader({
@@ -22,10 +18,7 @@ export function ChannelHeader({
   onBack,
   onMembersPress,
   onSettingsPress,
-  onStarToggle,
-  onMuteToggle,
-  isStarred = false,
-  isMuted = false,
+  onHuddlePress,
 }: ChannelHeaderProps) {
   const isPrivate = channel.type === "private";
 
@@ -37,94 +30,50 @@ export function ChannelHeader({
           className="mr-3 h-8 w-8 items-center justify-center rounded-full active:bg-muted"
           onPress={onBack}
         >
-          <FontAwesome
-            name="chevron-left"
-            size={16}
-            color={Colors.foreground}
-          />
+          <Ionicons name="chevron-back" size={24} color="#0f172a" />
         </Pressable>
 
-        {/* Channel Icon */}
-        <View className="h-9 w-9 items-center justify-center rounded-lg bg-muted">
-          <FontAwesome
-            name={isPrivate ? "lock" : "hashtag"}
-            size={16}
-            color={Colors.foreground}
-          />
-        </View>
-
-        {/* Channel Info */}
-        <Pressable className="ml-3 flex-1" onPress={onMembersPress}>
-          <View className="flex-row items-center">
-            <Text className="text-lg font-semibold text-foreground">
-              {channel.name}
-            </Text>
-            {isStarred && (
-              <FontAwesome
-                name="star"
-                size={12}
-                color={Colors.warning}
-                style={{ marginLeft: 6 }}
-              />
-            )}
-            {isMuted && (
-              <FontAwesome
-                name="bell-slash"
-                size={12}
-                color={Colors.mutedForeground}
-                style={{ marginLeft: 6 }}
-              />
+        {/* Channel Icon + Info */}
+        <Pressable className="flex-1 flex-row items-center" onPress={onMembersPress}>
+          {/* Channel Icon */}
+          <View className="mr-2">
+            {isPrivate ? (
+              <Ionicons name="lock-closed" size={18} color="#64748b" />
+            ) : (
+              <Text className="text-lg font-bold text-gray-500">#</Text>
             )}
           </View>
-          <Text className="text-sm text-muted-foreground">
-            {memberCount} member{memberCount !== 1 ? "s" : ""}
-          </Text>
+
+          {/* Channel Name + Member Count */}
+          <View>
+            <Text className="text-base font-semibold text-foreground">
+              {channel.name}
+            </Text>
+            <Text className="text-sm text-muted-foreground">
+              {memberCount} member{memberCount !== 1 ? "s" : ""}
+            </Text>
+          </View>
         </Pressable>
 
-        {/* Actions */}
-        <View className="flex-row items-center gap-2">
-          {/* Star Toggle */}
+        {/* Action Icons */}
+        <View className="flex-row items-center gap-1">
+          {/* Settings/Filter */}
           <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full active:bg-muted"
-            onPress={onStarToggle}
-          >
-            <FontAwesome
-              name={isStarred ? "star" : "star-o"}
-              size={18}
-              color={isStarred ? Colors.warning : Colors.mutedForeground}
-            />
-          </Pressable>
-
-          {/* Mute Toggle */}
-          <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full active:bg-muted"
-            onPress={onMuteToggle}
-          >
-            <FontAwesome
-              name={isMuted ? "bell-slash" : "bell-o"}
-              size={18}
-              color={isMuted ? Colors.mutedForeground : Colors.mutedForeground}
-            />
-          </Pressable>
-
-          {/* Settings */}
-          <Pressable
-            className="h-8 w-8 items-center justify-center rounded-full active:bg-muted"
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-muted"
             onPress={onSettingsPress}
           >
-            <FontAwesome name="cog" size={18} color={Colors.mutedForeground} />
+            <Ionicons name="options-outline" size={22} color="#64748b" />
+          </Pressable>
+
+          {/* Huddle */}
+          <Pressable
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-muted"
+            onPress={onHuddlePress}
+          >
+            <Ionicons name="headset-outline" size={22} color="#64748b" />
           </Pressable>
         </View>
       </View>
-
-      {/* Topic (if set) */}
-      {channel.topic && (
-        <View className="border-t border-border px-4 py-2">
-          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-            {channel.topic}
-          </Text>
-        </View>
-      )}
     </View>
   );
 }

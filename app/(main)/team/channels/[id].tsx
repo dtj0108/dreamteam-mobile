@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback, useLayoutEffect } from "react";
 import {
   View,
   Text,
@@ -7,19 +7,18 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { FontAwesome } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import {
   useChannel,
   useChannelMessages,
   useSendChannelMessage,
-  useToggleStarChannel,
-  useToggleMuteChannel,
 } from "@/lib/hooks/useTeam";
-import { useChannelSubscription } from "@/providers/team-provider";
+import { useChannelSubscription, useTeam } from "@/providers/team-provider";
 import { Message } from "@/lib/types/team";
 import { MessageList } from "@/components/team/MessageList";
 import { MessageInput } from "@/components/team/MessageInput";
@@ -28,10 +27,29 @@ import { ChannelHeader } from "@/components/team/ChannelHeader";
 export default function ChannelViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const [isAtBottom, setIsAtBottom] = useState(true);
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
+  // Hide parent header (main layout)
+  useLayoutEffect(() => {
+    // Navigate up: screen -> team Stack -> main Stack
+    const parent = navigation.getParent(); // team Stack
+    const grandparent = parent?.getParent(); // main Stack
+
+    // Try setting on the team screen within main Stack
+    grandparent?.setOptions({ headerShown: false });
+
+    return () => {
+      grandparent?.setOptions({ headerShown: true });
+    };
+  }, [navigation]);
 
   // Subscribe to real-time updates
   useChannelSubscription(id);
+
+  // Typing indicator
+  const { sendTyping, getTypingIndicator } = useTeam();
+  const typingText = id ? getTypingIndicator(id) : "";
 
   // Fetch channel and messages
   const { data: channelData, isLoading: channelLoading } = useChannel(id);
@@ -45,8 +63,6 @@ export default function ChannelViewScreen() {
 
   // Mutations
   const sendMessageMutation = useSendChannelMessage();
-  const toggleStarMutation = useToggleStarChannel();
-  const toggleMuteMutation = useToggleMuteChannel();
 
   const channel = channelData?.channel;
   const members = channelData?.members || [];
@@ -80,17 +96,6 @@ export default function ChannelViewScreen() {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const handleStarToggle = useCallback(() => {
-    if (!id || !channel) return;
-    // We would need to fetch membership info for this
-    toggleStarMutation.mutate({ id, isStarred: false });
-  }, [id, channel, toggleStarMutation]);
-
-  const handleMuteToggle = useCallback(() => {
-    if (!id || !channel) return;
-    toggleMuteMutation.mutate({ id, isMuted: false });
-  }, [id, channel, toggleMuteMutation]);
-
   const handleMembersPress = useCallback(() => {
     // TODO: Show members modal
     console.log("Show members");
@@ -99,6 +104,11 @@ export default function ChannelViewScreen() {
   const handleSettingsPress = useCallback(() => {
     // TODO: Show settings modal
     console.log("Show settings");
+  }, []);
+
+  const handleHuddlePress = useCallback(() => {
+    // TODO: Start huddle
+    console.log("Start huddle");
   }, []);
 
   const handleMessagePress = useCallback((message: Message) => {
@@ -120,23 +130,35 @@ export default function ChannelViewScreen() {
   );
 
   const handleTyping = useCallback(() => {
-    // Typing indicator is handled by the provider
+    if (id) {
+      sendTyping(id, false);
+    }
+  }, [id, sendTyping]);
+
+  const handleAttachmentPress = useCallback(() => {
+    // TODO: Open attachment picker
+    console.log("Open attachment picker");
+  }, []);
+
+  const handleMicrophonePress = useCallback(() => {
+    // TODO: Start voice recording
+    console.log("Start voice recording");
   }, []);
 
   if (!id) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+      <View className="flex-1 items-center justify-center bg-background">
         <Text className="text-muted-foreground">Channel not found</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? -20 : 0}
       >
         {/* Header */}
         {channel ? (
@@ -146,8 +168,7 @@ export default function ChannelViewScreen() {
             onBack={handleBack}
             onMembersPress={handleMembersPress}
             onSettingsPress={handleSettingsPress}
-            onStarToggle={handleStarToggle}
-            onMuteToggle={handleMuteToggle}
+            onHuddlePress={handleHuddlePress}
           />
         ) : (
           <View className="flex-row items-center border-b border-border px-4 py-3">
@@ -155,11 +176,7 @@ export default function ChannelViewScreen() {
               className="mr-3 h-8 w-8 items-center justify-center rounded-full active:bg-muted"
               onPress={handleBack}
             >
-              <FontAwesome
-                name="chevron-left"
-                size={16}
-                color={Colors.foreground}
-              />
+              <Ionicons name="chevron-back" size={24} color="#0f172a" />
             </Pressable>
             {isLoading && (
               <ActivityIndicator size="small" color={Colors.primary} />
@@ -185,15 +202,26 @@ export default function ChannelViewScreen() {
           />
         )}
 
+        {/* Typing Indicator */}
+        {typingText ? (
+          <View className="px-4 py-1">
+            <Text className="text-sm italic text-muted-foreground">
+              {typingText}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Message Input */}
         <MessageInput
           channelId={id}
-          placeholder={`Message #${channel?.name || "channel"}`}
+          channelName={channel?.name}
           onSend={handleSend}
           onTyping={handleTyping}
+          onAttachmentPress={handleAttachmentPress}
+          onMicrophonePress={handleMicrophonePress}
           disabled={sendMessageMutation.isPending}
         />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
