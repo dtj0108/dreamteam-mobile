@@ -19,6 +19,7 @@ import { ChannelWithMembership } from "@/lib/types/team";
 import { QuickActionCard } from "@/components/team/QuickActionCard";
 import { CollapsibleSection } from "@/components/team/CollapsibleSection";
 import { ChannelListItem } from "@/components/team/ChannelListItem";
+import { DMListItem } from "@/components/team/DMListItem";
 import { FABMenu } from "@/components/team/FABMenu";
 
 export default function HomeScreen() {
@@ -218,6 +219,46 @@ export default function HomeScreen() {
                   key={channel.id}
                   channel={channel}
                   onPress={() => handleChannelPress(channel)}
+                />
+              ))
+            )}
+          </CollapsibleSection>
+
+          {/* Direct Messages Section */}
+          <CollapsibleSection
+            title="Direct Messages"
+            defaultExpanded={true}
+            rightElement={
+              <Pressable onPress={() => router.push("/(main)/team/dm/new")} className="mr-2">
+                <Ionicons name="add-circle-outline" size={20} color="#64748b" />
+              </Pressable>
+            }
+          >
+            {dms.length === 0 ? (
+              <View className="items-center py-8">
+                <Ionicons name="person-outline" size={48} color="#d1d5db" />
+                <Text className="mt-4 text-base font-medium text-foreground">
+                  No conversations yet
+                </Text>
+                <Text className="mt-1 text-center text-sm text-muted-foreground">
+                  Start a direct message with a teammate
+                </Text>
+                <Pressable
+                  className="mt-4 flex-row items-center rounded-full bg-primary px-4 py-2 active:opacity-70"
+                  onPress={() => router.push("/(main)/team/dm/new")}
+                >
+                  <Ionicons name="add" size={16} color="white" />
+                  <Text className="ml-2 font-medium text-white">
+                    New Message
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              dms.map((dm) => (
+                <DMListItem
+                  key={dm.id}
+                  conversation={dm}
+                  onPress={() => router.push(`/(main)/team/dm/${dm.id}`)}
                 />
               ))
             )}

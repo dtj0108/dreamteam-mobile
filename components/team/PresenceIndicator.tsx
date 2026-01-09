@@ -4,10 +4,11 @@ import { PresenceStatus, PRESENCE_STATUS_COLORS } from "@/lib/types/team";
 
 interface PresenceIndicatorProps {
   status: PresenceStatus;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
 }
 
 const SIZE_MAP = {
+  xs: { dot: 6, ring: 1 },
   sm: { dot: 10, ring: 2 },
   md: { dot: 12, ring: 2 },
   lg: { dot: 16, ring: 3 },

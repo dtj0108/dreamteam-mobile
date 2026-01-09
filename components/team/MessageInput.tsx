@@ -1,14 +1,20 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   View,
   TextInput,
   Pressable,
   ActivityIndicator,
   Platform,
+  NativeSyntheticEvent,
+  TextInputSelectionChangeEventData,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GlassView } from "expo-glass-effect";
 import { Ionicons } from "@expo/vector-icons";
+
+import { MentionAutocomplete } from "./MentionAutocomplete";
+import { AttachmentPreview, PendingAttachment } from "./AttachmentPreview";
+import { WorkspaceMember, getMemberDisplayName, Attachment } from "@/lib/types/team";
 
 interface MessageInputProps {
   channelId?: string;
@@ -16,12 +22,18 @@ interface MessageInputProps {
   threadId?: string;
   channelName?: string; // For dynamic placeholder
   placeholder?: string;
-  onSend: (content: string) => Promise<void>;
+  onSend: (content: string, mentions?: string[], attachments?: Attachment[]) => Promise<void>;
   onTyping: () => void;
   onAttachmentPress?: () => void;
   onMicrophonePress?: () => void;
   disabled?: boolean;
   autoFocus?: boolean;
+  // Mention support
+  workspaceMembers?: WorkspaceMember[];
+  membersLoading?: boolean;
+  // Attachment support
+  pendingAttachments?: PendingAttachment[];
+  onRemoveAttachment?: (id: string) => void;
 }
 
 export function MessageInput({
@@ -36,12 +48,23 @@ export function MessageInput({
   onMicrophonePress,
   disabled = false,
   autoFocus = false,
+  workspaceMembers = [],
+  membersLoading = false,
+  pendingAttachments = [],
+  onRemoveAttachment,
 }: MessageInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1);
   const inputRef = useRef<TextInput>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
+
+  // Track mentioned user IDs for the message payload
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
 
   // Auto-focus with delay for screen transition
   useEffect(() => {
@@ -54,14 +77,110 @@ export function MessageInput({
   }, [autoFocus]);
 
   const hasContent = content.trim().length > 0;
-  const canSend = hasContent && !disabled && !isSending;
+  const hasAttachments = pendingAttachments.some(a => a.status === "uploaded");
+  const canSend = (hasContent || hasAttachments) && !disabled && !isSending;
 
   // Dynamic placeholder based on context
   const displayPlaceholder = placeholder || (channelName ? `Message #${channelName}` : "Message...");
 
+  // Handle cursor position changes for mention detection
+  const handleSelectionChange = useCallback(
+    (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+      setCursorPosition(e.nativeEvent.selection.start);
+    },
+    []
+  );
+
+  // Detect @ mentions in text
+  const detectMention = useCallback((text: string, cursor: number) => {
+    // Look backwards from cursor to find @
+    let atIndex = -1;
+    for (let i = cursor - 1; i >= 0; i--) {
+      const char = text[i];
+      if (char === "@") {
+        // Check if @ is at start or preceded by whitespace
+        if (i === 0 || /\s/.test(text[i - 1])) {
+          atIndex = i;
+          break;
+        }
+      }
+      // Stop if we hit whitespace (no @ in this word)
+      if (/\s/.test(char)) break;
+    }
+
+    if (atIndex >= 0) {
+      const query = text.slice(atIndex + 1, cursor);
+      // Only show if query doesn't contain spaces (single word)
+      if (!query.includes(" ")) {
+        setShowMentions(true);
+        setMentionQuery(query);
+        setMentionStartIndex(atIndex);
+        return;
+      }
+    }
+
+    setShowMentions(false);
+    setMentionQuery("");
+    setMentionStartIndex(-1);
+  }, []);
+
+  // Handle mention selection
+  const handleMentionSelect = useCallback(
+    (member: WorkspaceMember) => {
+      const displayName = getMemberDisplayName(member);
+      const mentionText = `@${displayName} `;
+
+      // Replace the @query with the full mention
+      const before = content.slice(0, mentionStartIndex);
+      const after = content.slice(cursorPosition);
+      const newContent = before + mentionText + after;
+
+      setContent(newContent);
+      setShowMentions(false);
+      setMentionQuery("");
+      setMentionStartIndex(-1);
+
+      // Track the mentioned user ID
+      if (!mentionedUserIds.includes(member.user_id)) {
+        setMentionedUserIds((prev) => [...prev, member.user_id]);
+      }
+
+      // Focus back on input
+      inputRef.current?.focus();
+    },
+    [content, mentionStartIndex, cursorPosition, mentionedUserIds]
+  );
+
+  // Close mention popup
+  const handleCloseMentions = useCallback(() => {
+    setShowMentions(false);
+    setMentionQuery("");
+    setMentionStartIndex(-1);
+  }, []);
+
+  // Open mention popup manually (@ button)
+  const handleMentionButtonPress = useCallback(() => {
+    // Insert @ at cursor and show popup
+    const before = content.slice(0, cursorPosition);
+    const after = content.slice(cursorPosition);
+    const newContent = before + "@" + after;
+    setContent(newContent);
+    setShowMentions(true);
+    setMentionQuery("");
+    setMentionStartIndex(cursorPosition);
+    inputRef.current?.focus();
+  }, [content, cursorPosition]);
+
   const handleChangeText = useCallback(
     (text: string) => {
       setContent(text);
+
+      // Detect mentions after a small delay to let cursor position update
+      setTimeout(() => {
+        // Use the new cursor position (text length if typing at end)
+        const newCursor = text.length;
+        detectMention(text, newCursor);
+      }, 0);
 
       // Debounce typing indicator
       if (typingTimeoutRef.current) {
@@ -71,26 +190,37 @@ export function MessageInput({
         onTyping();
       }, 300);
     },
-    [onTyping]
+    [onTyping, detectMention]
   );
 
   const handleSend = useCallback(async () => {
     if (!canSend) return;
 
     const messageContent = content.trim();
+    const mentions = mentionedUserIds.length > 0 ? mentionedUserIds : undefined;
+    const uploadedAttachments = pendingAttachments
+      .filter((a) => a.status === "uploaded" && a.attachment)
+      .map((a) => a.attachment!);
+
     setContent("");
+    setMentionedUserIds([]);
     setIsSending(true);
 
     try {
-      await onSend(messageContent);
+      await onSend(
+        messageContent,
+        mentions,
+        uploadedAttachments.length > 0 ? uploadedAttachments : undefined
+      );
     } catch (error) {
       // Restore content on error
       setContent(messageContent);
+      setMentionedUserIds(mentions || []);
       console.error("Failed to send message:", error);
     } finally {
       setIsSending(false);
     }
-  }, [content, canSend, onSend]);
+  }, [content, canSend, onSend, mentionedUserIds, pendingAttachments]);
 
   const handleAttachmentPress = useCallback(() => {
     onAttachmentPress?.();
@@ -108,6 +238,7 @@ export function MessageInput({
       placeholderTextColor="#9ca3af"
       value={content}
       onChangeText={handleChangeText}
+      onSelectionChange={handleSelectionChange}
       multiline
       editable={!disabled}
       returnKeyType="default"
@@ -153,12 +284,13 @@ export function MessageInput({
           </Pressable>
           <Pressable
             className="h-9 w-9 items-center justify-center rounded-full active:bg-gray-100"
+            onPress={handleMentionButtonPress}
             disabled={disabled}
           >
             <Ionicons
               name="at"
               size={20}
-              color={disabled ? "#d1d5db" : "#64748b"}
+              color={disabled ? "#d1d5db" : showMentions ? "#0ea5e9" : "#64748b"}
             />
           </Pressable>
           <Pressable
@@ -193,14 +325,32 @@ export function MessageInput({
   );
 
   const inputContent = (
-    <>
+    <View className="relative">
+      {/* Mention autocomplete dropdown - positioned above input */}
+      <MentionAutocomplete
+        query={mentionQuery}
+        members={workspaceMembers}
+        isLoading={membersLoading}
+        onSelect={handleMentionSelect}
+        onClose={handleCloseMentions}
+        visible={showMentions}
+      />
+
+      {/* Attachment previews */}
+      {pendingAttachments.length > 0 && (
+        <AttachmentPreview
+          attachments={pendingAttachments}
+          onRemove={onRemoveAttachment}
+        />
+      )}
+
       {/* Text input */}
       <View className="min-h-[44px] justify-center px-2">
         {textInput}
       </View>
       {/* Action buttons */}
       {actionButtons}
-    </>
+    </View>
   );
 
   return (

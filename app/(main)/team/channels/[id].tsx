@@ -17,12 +17,14 @@ import {
   useChannel,
   useChannelMessages,
   useSendChannelMessage,
+  useWorkspaceMembers,
 } from "@/lib/hooks/useTeam";
 import { useChannelSubscription, useTeam } from "@/providers/team-provider";
-import { Message } from "@/lib/types/team";
+import { Message, Attachment } from "@/lib/types/team";
 import { MessageList } from "@/components/team/MessageList";
 import { MessageInput } from "@/components/team/MessageInput";
 import { ChannelHeader } from "@/components/team/ChannelHeader";
+import { useFileAttachments } from "@/lib/hooks/useFileAttachments";
 
 export default function ChannelViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -64,6 +66,18 @@ export default function ChannelViewScreen() {
   // Mutations
   const sendMessageMutation = useSendChannelMessage();
 
+  // Workspace members for @mentions
+  const { data: membersData, isLoading: membersLoading } = useWorkspaceMembers();
+  const workspaceMembers = membersData?.members || [];
+
+  // File attachments
+  const {
+    pendingAttachments,
+    showPicker,
+    removeAttachment,
+    clearAttachments,
+  } = useFileAttachments();
+
   const channel = channelData?.channel;
   const members = channelData?.members || [];
 
@@ -79,15 +93,30 @@ export default function ChannelViewScreen() {
   };
 
   const handleSend = useCallback(
-    async (content: string) => {
-      if (!id || !content.trim()) return;
+    async (content: string, mentions?: string[], attachments?: Attachment[]) => {
+      if (!id) return;
+
+      // Allow sending if there's content OR attachments
+      if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
       await sendMessageMutation.mutateAsync({
         channelId: id,
-        data: { content: content.trim() },
+        data: {
+          content: content.trim(),
+          mentions,
+          attachments: attachments?.map((a) => ({
+            type: a.type,
+            url: a.url,
+            name: a.name,
+            size: a.size,
+          })),
+        },
       });
+
+      // Clear attachments after successful send
+      clearAttachments();
     },
-    [id, sendMessageMutation]
+    [id, sendMessageMutation, clearAttachments]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -136,9 +165,8 @@ export default function ChannelViewScreen() {
   }, [id, sendTyping]);
 
   const handleAttachmentPress = useCallback(() => {
-    // TODO: Open attachment picker
-    console.log("Open attachment picker");
-  }, []);
+    showPicker();
+  }, [showPicker]);
 
   const handleMicrophonePress = useCallback(() => {
     // TODO: Start voice recording
@@ -220,6 +248,10 @@ export default function ChannelViewScreen() {
           onAttachmentPress={handleAttachmentPress}
           onMicrophonePress={handleMicrophonePress}
           disabled={sendMessageMutation.isPending}
+          workspaceMembers={workspaceMembers}
+          membersLoading={membersLoading}
+          pendingAttachments={pendingAttachments}
+          onRemoveAttachment={removeAttachment}
         />
       </KeyboardAvoidingView>
     </View>

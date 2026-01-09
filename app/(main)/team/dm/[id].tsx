@@ -19,12 +19,14 @@ import {
   useDMMessages,
   useSendDMMessage,
   useToggleMuteDM,
+  useWorkspaceMembers,
 } from "@/lib/hooks/useTeam";
 import { useDMSubscription, useTeam } from "@/providers/team-provider";
-import { Message, getMemberDisplayName } from "@/lib/types/team";
+import { Message, getMemberDisplayName, Attachment } from "@/lib/types/team";
 import { MessageList } from "@/components/team/MessageList";
 import { MessageInput } from "@/components/team/MessageInput";
 import { PresenceIndicator } from "@/components/team/PresenceIndicator";
+import { useFileAttachments } from "@/lib/hooks/useFileAttachments";
 
 export default function DMViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,6 +63,18 @@ export default function DMViewScreen() {
   const sendMessageMutation = useSendDMMessage();
   const toggleMuteMutation = useToggleMuteDM();
 
+  // Workspace members for @mentions
+  const { data: membersData, isLoading: membersLoading } = useWorkspaceMembers();
+  const workspaceMembers = membersData?.members || [];
+
+  // File attachments
+  const {
+    pendingAttachments,
+    showPicker,
+    removeAttachment,
+    clearAttachments,
+  } = useFileAttachments();
+
   const participant = dm?.participant;
 
   // Flatten paginated messages
@@ -75,15 +89,30 @@ export default function DMViewScreen() {
   };
 
   const handleSend = useCallback(
-    async (content: string) => {
-      if (!id || !content.trim()) return;
+    async (content: string, mentions?: string[], attachments?: Attachment[]) => {
+      if (!id) return;
+
+      // Allow sending if there's content OR attachments
+      if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
       await sendMessageMutation.mutateAsync({
         dmId: id,
-        data: { content: content.trim() },
+        data: {
+          content: content.trim(),
+          mentions,
+          attachments: attachments?.map((a) => ({
+            type: a.type,
+            url: a.url,
+            name: a.name,
+            size: a.size,
+          })),
+        },
       });
+
+      // Clear attachments after successful send
+      clearAttachments();
     },
-    [id, sendMessageMutation]
+    [id, sendMessageMutation, clearAttachments]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -119,9 +148,8 @@ export default function DMViewScreen() {
   }, [id, sendTyping]);
 
   const handleAttachmentPress = useCallback(() => {
-    // TODO: Open attachment picker
-    console.log("Open attachment picker");
-  }, []);
+    showPicker();
+  }, [showPicker]);
 
   const handleMicrophonePress = useCallback(() => {
     // TODO: Start voice recording
@@ -271,6 +299,10 @@ export default function DMViewScreen() {
           onAttachmentPress={handleAttachmentPress}
           onMicrophonePress={handleMicrophonePress}
           disabled={sendMessageMutation.isPending}
+          workspaceMembers={workspaceMembers}
+          membersLoading={membersLoading}
+          pendingAttachments={pendingAttachments}
+          onRemoveAttachment={removeAttachment}
         />
       </KeyboardAvoidingView>
     </View>

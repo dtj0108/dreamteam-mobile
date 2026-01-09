@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState, AppStateStatus, Platform } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
@@ -19,6 +19,8 @@ import {
   getTypingText,
 } from "@/lib/types/team";
 import { teamKeys } from "@/lib/hooks/useTeam";
+import { playNotificationSound, initializeAudio } from "@/lib/audio";
+import { showBrowserNotification } from "@/lib/hooks/useBrowserNotifications";
 
 // ============================================================================
 // Types
@@ -306,7 +308,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
               });
             }
 
-            // Handle unread counts for new messages
+            // Handle unread counts and notifications for new messages
             if (
               eventType === "INSERT" &&
               newMessage &&
@@ -316,6 +318,10 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
                 ? activeDMId === channelOrDmId
                 : activeChannelId === channelOrDmId;
 
+              // Check if message mentions current user
+              const mentions = (newMessage as { mentions?: string[] }).mentions;
+              const hasMention = mentions?.includes(user?.id || "");
+
               if (!isActive) {
                 setUnreadCounts((prev) => {
                   const newMap = new Map(prev);
@@ -324,11 +330,35 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
                   return newMap;
                 });
 
-                // Check if message mentions current user
-                const mentions = (newMessage as { mentions?: string[] }).mentions;
-                if (mentions?.includes(user?.id || "")) {
+                if (hasMention) {
                   setTotalUnreadMentions((prev) => prev + 1);
                 }
+              }
+
+              // Play notification sound (always, even if active - like Slack)
+              // Use "mention" sound if user was mentioned, otherwise "message"
+              if (hasMention) {
+                playNotificationSound("mention");
+              } else {
+                playNotificationSound("message");
+              }
+
+              // Show browser notification on web platform (only if not active)
+              if (Platform.OS === "web" && !isActive) {
+                const senderName =
+                  (newMessage as { sender?: { name?: string } }).sender?.name ||
+                  "Someone";
+                const content =
+                  (newMessage as { content?: string }).content || "";
+                const preview = content.length > 100 ? content.slice(0, 100) + "..." : content;
+
+                showBrowserNotification(
+                  hasMention ? `${senderName} mentioned you` : `New message from ${senderName}`,
+                  {
+                    body: preview,
+                    tag: `message-${(newMessage as { id: string }).id}`,
+                  }
+                );
               }
             }
           }
@@ -371,6 +401,17 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     if (typingChannel) {
       supabase.removeChannel(typingChannel);
       messageChannelsRef.current.delete(`typing:${key}`);
+    }
+  }, []);
+
+  // ============================================================================
+  // Initialize Audio
+  // ============================================================================
+
+  useEffect(() => {
+    // Initialize audio on mount (only on native platforms)
+    if (Platform.OS !== "web") {
+      initializeAudio();
     }
   }, []);
 
