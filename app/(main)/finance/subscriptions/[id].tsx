@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Loading } from "@/components/Loading";
 import { Colors } from "@/constants/Colors";
 import { useCategoriesByType } from "@/lib/hooks/useCategories";
 import {
@@ -165,9 +166,7 @@ export default function SubscriptionDetailScreen() {
   if (isLoading || !subscription) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+        <Loading />
       </SafeAreaView>
     );
   }

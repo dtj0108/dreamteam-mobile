@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SubscriptionCard } from "@/components/finance/SubscriptionCard";
+import { Loading } from "@/components/Loading";
 import { Colors } from "@/constants/Colors";
 import {
   useDetectSubscriptions,
@@ -175,11 +176,7 @@ export default function SubscriptionsScreen() {
         </View>
 
         {/* Loading State */}
-        {isLoading && (
-          <View className="items-center py-12">
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        )}
+        {isLoading && <Loading />}
 
         {/* Subscription List */}
         {!isLoading && (

@@ -23,27 +23,24 @@ import {
 import {
   LeadTask,
   LeadOpportunity,
-  Activity,
   ActivityType,
   getContactFullName,
   formatCurrency,
   getOpportunityStageLabel,
   OPPORTUNITY_STAGE_COLORS,
-  ACTIVITY_TYPE_COLORS,
-  ACTIVITY_TYPE_ICONS,
 } from "../../../../lib/types/sales";
 import { StatusBadge } from "../../../../components/sales/StatusBadge";
 import { ActivityTimeline } from "../../../../components/sales/ActivityTimeline";
 import { QuickLogMenu } from "../../../../components/sales/QuickLogMenu";
-
-type Tab = "details" | "activity";
+import { LeadActionBar } from "../../../../components/sales/LeadActionBar";
 
 export default function LeadDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [activeTab, setActiveTab] = useState<Tab>("details");
+  const [activeTab, setActiveTab] = useState<"activity" | "details">("activity");
 
   const { data: lead, isLoading, error, refetch } = useLead(id);
+  const primaryContact = lead?.contacts?.[0] || null;
   const deleteLeadMutation = useDeleteLead();
   const updateTaskMutation = useUpdateLeadTask();
   const deleteTaskMutation = useDeleteLeadTask();
@@ -162,15 +159,15 @@ export default function LeadDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="large" color="#0ea5e9" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error || !lead) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+      <View className="flex-1 items-center justify-center bg-background">
         <FontAwesome name="exclamation-circle" size={48} color="#ef4444" />
         <Text className="mt-4 text-lg text-foreground">Lead not found</Text>
         <Pressable
@@ -179,7 +176,7 @@ export default function LeadDetailScreen() {
         >
           <Text className="font-medium text-white">Go Back</Text>
         </Pressable>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -210,18 +207,38 @@ export default function LeadDetailScreen() {
         </View>
       </View>
 
-      {/* Lead header */}
+      {/* Lead header with tabs */}
       <View className="border-b border-muted px-4 py-4">
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
             <Text className="text-xl font-bold text-foreground">{lead.name}</Text>
-            {lead.industry && (
-              <Text className="mt-0.5 text-sm text-muted-foreground">
-                {lead.industry}
-              </Text>
-            )}
+            <View className="mt-1 flex-row items-center gap-2">
+              {lead.industry && (
+                <Text className="text-sm text-muted-foreground">
+                  {lead.industry}
+                </Text>
+              )}
+              <StatusBadge status={lead.status} stage={lead.stage} />
+            </View>
           </View>
-          <StatusBadge status={lead.status} stage={lead.stage} />
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              className={`rounded-full px-3 py-1 ${activeTab === "activity" ? "bg-foreground" : "bg-muted"}`}
+              onPress={() => setActiveTab("activity")}
+            >
+              <Text className={`text-sm font-medium ${activeTab === "activity" ? "text-white" : "text-muted-foreground"}`}>
+                Activity
+              </Text>
+            </Pressable>
+            <Pressable
+              className={`rounded-full px-3 py-1 ${activeTab === "details" ? "bg-foreground" : "bg-muted"}`}
+              onPress={() => setActiveTab("details")}
+            >
+              <Text className={`text-sm font-medium ${activeTab === "details" ? "text-white" : "text-muted-foreground"}`}>
+                Details
+              </Text>
+            </Pressable>
+          </View>
         </View>
         {lead.website && (
           <Pressable
@@ -234,40 +251,19 @@ export default function LeadDetailScreen() {
         )}
       </View>
 
-      {/* Tabs */}
-      <View className="flex-row border-b border-muted">
-        <Pressable
-          className={`flex-1 items-center py-3 ${
-            activeTab === "details" ? "border-b-2 border-primary" : ""
-          }`}
-          onPress={() => setActiveTab("details")}
-        >
-          <Text
-            className={`font-medium ${
-              activeTab === "details" ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            Details
-          </Text>
-        </Pressable>
-        <Pressable
-          className={`flex-1 items-center py-3 ${
-            activeTab === "activity" ? "border-b-2 border-primary" : ""
-          }`}
-          onPress={() => setActiveTab("activity")}
-        >
-          <Text
-            className={`font-medium ${
-              activeTab === "activity" ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            Activity
-          </Text>
-        </Pressable>
-      </View>
+      {/* Action Bar - Call, Text, Email */}
+      <LeadActionBar contact={primaryContact} />
 
-      {/* Tab content */}
-      {activeTab === "details" ? (
+      {/* Tab Content */}
+      {activeTab === "activity" ? (
+        <View className="flex-1">
+          <ActivityTimeline
+            activities={lead.activities || []}
+            onLogActivity={handleCustomLogActivity}
+            onRefresh={() => refetch()}
+          />
+        </View>
+      ) : (
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -279,15 +275,9 @@ export default function LeadDetailScreen() {
             onDeleteOpportunity={handleDeleteOpportunity}
           />
         </ScrollView>
-      ) : (
-        <ActivityTimeline
-          activities={lead.activities || []}
-          onLogActivity={handleCustomLogActivity}
-          onRefresh={() => refetch()}
-        />
       )}
 
-      {/* Quick Log FAB - only show on Activity tab */}
+      {/* Quick Log FAB - only on activity tab */}
       {activeTab === "activity" && (
         <QuickLogMenu
           onLogActivity={handleLogActivityWithType}

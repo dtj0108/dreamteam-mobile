@@ -8,11 +8,13 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { useContacts } from "../../../../lib/hooks/useContacts";
 import { ContactCard } from "../../../../components/sales/ContactCard";
+import { ProductSwitcher } from "../../../../components/ProductSwitcher";
 
 export default function ContactsScreen() {
   const router = useRouter();
@@ -41,6 +43,12 @@ export default function ContactsScreen() {
 
   return (
     <View className="flex-1 bg-background">
+      <SafeAreaView edges={["top"]} className="bg-background">
+        <View className="px-4 py-2">
+          <ProductSwitcher />
+        </View>
+      </SafeAreaView>
+
       {/* Header */}
       <View className="px-4 py-4">
         <View className="flex-row items-center justify-between">

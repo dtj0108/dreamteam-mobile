@@ -1,5 +1,58 @@
 // Finance Module Types
 
+// Plaid Integration Types
+export type PlaidItemStatus = "good" | "error" | "pending";
+
+export interface PlaidItem {
+  id: string;
+  plaid_item_id: string;
+  institution_name: string;
+  status: PlaidItemStatus;
+  error_code?: string;
+  error_message?: string;
+  last_successful_update?: string;
+  created_at: string;
+  accounts: PlaidAccount[];
+}
+
+export interface PlaidAccount {
+  id: string;
+  name: string;
+  type: AccountType;
+  balance: number;
+  last_four?: string;
+  is_plaid_linked: boolean;
+}
+
+export interface LinkTokenResponse {
+  linkToken: string;
+  expiration: string;
+}
+
+export interface ExchangeTokenRequest {
+  publicToken: string;
+  institutionId?: string;
+  institutionName?: string;
+}
+
+export interface ExchangeTokenResponse {
+  success: boolean;
+  plaidItemId: string;
+  accountsCreated: number;
+  accounts: PlaidAccount[];
+}
+
+export interface PlaidSyncResponse {
+  success: boolean;
+  added: number;
+  modified: number;
+  removed: number;
+}
+
+export interface PlaidAccountsResponse {
+  items: PlaidItem[];
+}
+
 export type AccountType =
   | "checking"
   | "savings"
@@ -222,6 +275,36 @@ export interface CashFlowReport {
 }
 
 export type CashFlowGroupBy = "day" | "week" | "month";
+
+// Budget vs Actual Report
+export type BudgetStatus = "over" | "warning" | "under";
+
+export interface BudgetComparison {
+  budgetId: string;
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  budgetAmount: number;
+  actualAmount: number;
+  variance: number;
+  variancePercent: number;
+  utilizationPercent: number;
+  status: BudgetStatus;
+}
+
+export interface BudgetVsActualReport {
+  period: DateRange;
+  summary: {
+    totalBudgeted: number;
+    totalActual: number;
+    totalVariance: number;
+    variancePercent: number;
+    budgetCount: number;
+    overBudgetCount: number;
+    underBudgetCount: number;
+  };
+  comparison: BudgetComparison[];
+}
 
 export interface DateRange {
   startDate: string;

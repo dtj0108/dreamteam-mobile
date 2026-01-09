@@ -1,7 +1,10 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Loading } from "@/components/Loading";
+import { ProductSwitcher } from "@/components/ProductSwitcher";
 import { Colors } from "@/constants/Colors";
 import { useAccounts } from "@/lib/hooks/useAccounts";
 import { Account, ACCOUNT_TYPE_COLORS, AccountType } from "@/lib/types/finance";
@@ -35,6 +38,12 @@ export default function AccountsScreen() {
 
   return (
     <View className="flex-1 bg-background">
+      <SafeAreaView edges={["top"]} className="bg-background">
+        <View className="px-4 py-2">
+          <ProductSwitcher />
+        </View>
+      </SafeAreaView>
+
       <ScrollView
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -48,42 +57,47 @@ export default function AccountsScreen() {
             <Text className="text-2xl font-bold text-foreground">Accounts</Text>
             <Text className="text-muted-foreground">Manage your accounts</Text>
           </View>
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-primary"
-            onPress={() => router.push("/finance/accounts/new")}
-          >
-            <FontAwesome name="plus" size={18} color="white" />
-          </Pressable>
+          <View className="flex-row gap-2">
+            <Pressable
+              className="h-10 w-10 items-center justify-center rounded-full bg-muted"
+              onPress={() => router.push("/finance/banks")}
+            >
+              <FontAwesome name="university" size={16} color={Colors.primary} />
+            </Pressable>
+            <Pressable
+              className="h-10 w-10 items-center justify-center rounded-full bg-primary"
+              onPress={() => router.push("/finance/accounts/new")}
+            >
+              <FontAwesome name="plus" size={18} color="white" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Loading State */}
-        {isLoading && (
-          <View className="items-center py-12">
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        )}
+        {isLoading && <Loading />}
 
         {/* Content */}
         {!isLoading && (
           <>
             {/* Balance Summary */}
             <View className="mb-4 rounded-xl bg-muted p-4">
-              <View className="flex-row justify-between">
-                <View className="flex-1">
-                  <Text className="text-sm text-muted-foreground">Net Worth</Text>
-                  <Text className="text-2xl font-bold text-foreground">
-                    {formatCurrency(totals.netWorth)}
-                  </Text>
-                </View>
-                <View className="h-full w-px bg-border" />
-                <View className="flex-1 items-center">
+              {/* Net Worth - Hero */}
+              <View className="mb-3 items-center">
+                <Text className="text-sm text-muted-foreground">Net Worth</Text>
+                <Text className="text-3xl font-bold text-foreground">
+                  {formatCurrency(totals.netWorth)}
+                </Text>
+              </View>
+
+              {/* Assets & Liabilities Row */}
+              <View className="flex-row justify-between border-t border-border pt-3">
+                <View>
                   <Text className="text-sm text-muted-foreground">Assets</Text>
                   <Text className="text-lg font-semibold text-green-500">
                     {formatCurrency(totals.assets)}
                   </Text>
                 </View>
-                <View className="h-full w-px bg-border" />
-                <View className="flex-1 items-end">
+                <View className="items-end">
                   <Text className="text-sm text-muted-foreground">Liabilities</Text>
                   <Text className="text-lg font-semibold text-red-500">
                     {formatCurrency(totals.liabilities)}

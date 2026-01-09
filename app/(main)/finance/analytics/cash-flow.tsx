@@ -2,7 +2,6 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,6 +15,7 @@ import {
   DateRangePicker,
   MetricCard,
 } from "@/components/finance";
+import { Loading } from "@/components/Loading";
 import { Colors } from "@/constants/Colors";
 import { useCashFlow } from "@/lib/hooks/useAnalytics";
 import { CashFlowGroupBy, DateRange } from "@/lib/types/finance";
@@ -44,9 +44,7 @@ export default function CashFlowScreen() {
   if (isLoading && !data) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+        <Loading />
       </SafeAreaView>
     );
   }

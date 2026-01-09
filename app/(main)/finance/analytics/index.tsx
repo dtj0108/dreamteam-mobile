@@ -1,7 +1,6 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
@@ -10,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { MetricCard, ReportCard, TrendChart } from "@/components/finance";
+import { Loading } from "@/components/Loading";
 import { Colors } from "@/constants/Colors";
 import { useAnalyticsOverview } from "@/lib/hooks/useAnalytics";
 
@@ -29,9 +29,7 @@ export default function AnalyticsOverviewScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color={Colors.primary} />
-        </View>
+        <Loading />
       </SafeAreaView>
     );
   }
@@ -146,6 +144,13 @@ export default function AnalyticsOverviewScreen() {
               title="Cash Flow"
               subtitle="Money in vs money out over time"
               onPress={() => router.push("/(main)/finance/analytics/cash-flow")}
+            />
+            <ReportCard
+              icon="pie-chart"
+              iconColor="#f59e0b"
+              title="Budget vs Actual"
+              subtitle="Compare spending against budgets"
+              onPress={() => router.push("/(main)/finance/analytics/budget-vs-actual")}
             />
           </View>
         </View>

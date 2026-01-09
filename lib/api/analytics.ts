@@ -1,6 +1,7 @@
 import { get } from "../api";
 import {
   AnalyticsOverview,
+  BudgetVsActualReport,
   CashFlowGroupBy,
   CashFlowReport,
   DateRange,
@@ -72,4 +73,15 @@ export async function getCashFlow(
   if (dateRange?.startDate) params.append("startDate", dateRange.startDate);
   if (dateRange?.endDate) params.append("endDate", dateRange.endDate);
   return get<CashFlowReport>(`/api/analytics/cash-flow?${params.toString()}`);
+}
+
+/**
+ * Fetch budget vs actual comparison report
+ * Compares budgeted amounts against actual spending by category
+ */
+export async function getBudgetVsActual(
+  dateRange?: DateRange
+): Promise<BudgetVsActualReport> {
+  const queryString = buildDateParams(dateRange);
+  return get<BudgetVsActualReport>(`/api/analytics/budget-vs-actual${queryString}`);
 }

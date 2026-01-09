@@ -7,11 +7,13 @@ import {
   TextInput,
   RefreshControl,
   ActivityIndicator,
+  Switch,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import { useMyTasks } from "../../../../lib/hooks/useProjects";
+import { useMyTasks, useAllTasks } from "../../../../lib/hooks/useProjects";
 import { Task, TaskStatus, TASK_STATUS_COLORS } from "../../../../lib/types/projects";
 import { TaskCard } from "../../../../components/projects/TaskCard";
 import { StatsCard } from "../../../../components/projects/StatsCard";
@@ -23,6 +25,8 @@ const STATUS_FILTERS: { label: string; value: TaskStatus | "all" }[] = [
   { label: "Review", value: "review" },
   { label: "Done", value: "done" },
 ];
+
+type ViewMode = "mine" | "all";
 
 // Helper to group tasks by due date
 function groupTasksByDueDate(tasks: Task[]) {
@@ -72,32 +76,51 @@ export default function MyTasksScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
+  const [hideCompleted, setHideCompleted] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("mine");
 
   // Fetch data with status filter
   const queryParams = statusFilter !== "all" ? { status: statusFilter } : undefined;
-  const { data: tasksData, isLoading, refetch } = useMyTasks(queryParams);
+  const myTasksQuery = useMyTasks(queryParams);
+  const allTasksQuery = useAllTasks(queryParams);
+
+  // Select the appropriate query based on view mode
+  const { data: tasksData, isLoading, refetch } = viewMode === "mine" ? myTasksQuery : allTasksQuery;
   const tasks = tasksData?.tasks || [];
 
-  // Filter tasks by search query
+  // Filter tasks by search query and hide completed
   const filteredTasks = useMemo(() => {
-    if (!searchQuery) return tasks;
-    const query = searchQuery.toLowerCase();
-    return tasks.filter(
-      (task) =>
-        task.title.toLowerCase().includes(query) ||
-        task.description?.toLowerCase().includes(query) ||
-        task.project?.name.toLowerCase().includes(query)
-    );
-  }, [tasks, searchQuery]);
+    let filtered = tasks;
+
+    // Filter by hideCompleted
+    if (hideCompleted) {
+      filtered = filtered.filter((task) => task.status !== "done");
+    }
+
+    // Filter by search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.description?.toLowerCase().includes(query) ||
+          task.project?.name.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [tasks, searchQuery, hideCompleted]);
 
   // Group tasks by due date
   const groupedTasks = useMemo(() => {
     return groupTasksByDueDate(filteredTasks);
   }, [filteredTasks]);
 
-  // Calculate stats (from all tasks, not filtered)
-  const { data: allTasksData } = useMyTasks();
-  const allTasks = allTasksData?.tasks || [];
+  // Calculate stats (from all tasks for current view mode, not filtered)
+  const myStatsQuery = useMyTasks();
+  const allStatsQuery = useAllTasks();
+  const statsData = viewMode === "mine" ? myStatsQuery.data : allStatsQuery.data;
+  const allTasks = statsData?.tasks || [];
 
   const stats = useMemo(() => {
     const today = new Date();
@@ -125,13 +148,47 @@ export default function MyTasksScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background">
+    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
       {/* Header */}
       <View className="px-4 py-4">
-        <Text className="text-2xl font-bold text-foreground">My Tasks</Text>
-        <Text className="text-sm text-muted-foreground">
-          Tasks assigned to you
+        <Text className="text-2xl font-bold text-foreground">
+          {viewMode === "mine" ? "My Tasks" : "All Tasks"}
         </Text>
+        <Text className="text-sm text-muted-foreground">
+          {viewMode === "mine" ? "Tasks assigned to you" : "All tasks across projects"}
+        </Text>
+      </View>
+
+      {/* View Mode Toggle */}
+      <View className="flex-row gap-2 px-4 pb-2">
+        <Pressable
+          className={`flex-1 items-center rounded-lg py-2 ${
+            viewMode === "mine" ? "bg-primary" : "bg-muted"
+          }`}
+          onPress={() => setViewMode("mine")}
+        >
+          <Text
+            className={`text-sm font-medium ${
+              viewMode === "mine" ? "text-white" : "text-muted-foreground"
+            }`}
+          >
+            My Tasks
+          </Text>
+        </Pressable>
+        <Pressable
+          className={`flex-1 items-center rounded-lg py-2 ${
+            viewMode === "all" ? "bg-primary" : "bg-muted"
+          }`}
+          onPress={() => setViewMode("all")}
+        >
+          <Text
+            className={`text-sm font-medium ${
+              viewMode === "all" ? "text-white" : "text-muted-foreground"
+            }`}
+          >
+            All Tasks
+          </Text>
+        </Pressable>
       </View>
 
       {/* Stats */}
@@ -181,8 +238,8 @@ export default function MyTasksScreen() {
         </View>
       </View>
 
-      {/* Status Filter Tabs */}
-      <View className="px-4 py-2">
+      {/* Status Filter Tabs + Hide Completed Toggle */}
+      <View className="flex-row items-center justify-between px-4 py-2">
         <View className="flex-row gap-2">
           {STATUS_FILTERS.map((filter) => {
             const isActive = statusFilter === filter.value;
@@ -208,6 +265,19 @@ export default function MyTasksScreen() {
             );
           })}
         </View>
+        <Pressable
+          className="flex-row items-center gap-2"
+          onPress={() => setHideCompleted(!hideCompleted)}
+        >
+          <Text className="text-xs text-muted-foreground">Hide done</Text>
+          <Switch
+            value={hideCompleted}
+            onValueChange={setHideCompleted}
+            trackColor={{ false: "#e5e5e5", true: "#0ea5e9" }}
+            thumbColor="#ffffff"
+            style={{ transform: [{ scale: 0.7 }] }}
+          />
+        </Pressable>
       </View>
 
       {/* Content */}
@@ -219,12 +289,18 @@ export default function MyTasksScreen() {
         <View className="flex-1 items-center justify-center py-12">
           <FontAwesome name="check-square-o" size={48} color="#d1d5db" />
           <Text className="mt-4 text-lg font-medium text-foreground">
-            {searchQuery ? "No tasks found" : "No tasks assigned"}
+            {searchQuery
+              ? "No tasks found"
+              : viewMode === "mine"
+              ? "No tasks assigned"
+              : "No tasks yet"}
           </Text>
           <Text className="mt-1 text-center text-muted-foreground">
             {searchQuery
               ? "Try a different search term"
-              : "Tasks assigned to you will\nappear here"}
+              : viewMode === "mine"
+              ? "Tasks assigned to you will\nappear here"
+              : "Create tasks in your projects\nto see them here"}
           </Text>
         </View>
       ) : (
@@ -267,6 +343,6 @@ export default function MyTasksScreen() {
           stickySectionHeadersEnabled={false}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }

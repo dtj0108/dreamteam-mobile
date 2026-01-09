@@ -2,14 +2,16 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Loading } from "@/components/Loading";
+import { ProductSwitcher } from "@/components/ProductSwitcher";
 import { Colors } from "@/constants/Colors";
 import { useBudgets } from "@/lib/hooks/useBudgets";
 import { Budget, BudgetPeriod, getBudgetProgressColor } from "@/lib/types/finance";
@@ -55,6 +57,12 @@ export default function BudgetsScreen() {
 
   return (
     <View className="flex-1 bg-background">
+      <SafeAreaView edges={["top"]} className="bg-background">
+        <View className="px-4 py-2">
+          <ProductSwitcher />
+        </View>
+      </SafeAreaView>
+
       <ScrollView
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -125,11 +133,7 @@ export default function BudgetsScreen() {
         </View>
 
         {/* Loading State */}
-        {isLoading && (
-          <View className="items-center py-12">
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        )}
+        {isLoading && <Loading />}
 
         {/* Budget List */}
         {!isLoading && (

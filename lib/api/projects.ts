@@ -706,6 +706,7 @@ export async function getMyTasks(params?: MyTasksQueryParams): Promise<MyTasksRe
   try {
     const workspaceId = await getWorkspaceId();
     const userId = await getCurrentUserId();
+    console.log("[Projects API] getMyTasks - userId:", userId, "workspaceId:", workspaceId);
 
     // Step 1: Get task IDs assigned to the current user (with user_id for later)
     const { data: myAssignments, error: assigneeError } = await supabase
@@ -716,8 +717,10 @@ export async function getMyTasks(params?: MyTasksQueryParams): Promise<MyTasksRe
     if (assigneeError) throw assigneeError;
 
     const taskIds = (myAssignments || []).map(a => a.task_id);
+    console.log("[Projects API] getMyTasks - found", taskIds.length, "task assignments for user");
 
     if (taskIds.length === 0) {
+      console.log("[Projects API] getMyTasks - no assignments found, returning empty");
       return {
         tasks: [],
         total: 0,
@@ -810,10 +813,15 @@ export async function getMyTasks(params?: MyTasksQueryParams): Promise<MyTasksRe
     }
 
     // Step 7: Filter to current workspace and merge project + assignee info
+    console.log("[Projects API] getMyTasks - tasks before workspace filter:", tasks.length);
     const workspaceTasks = tasks.filter((t: any) => {
       const project = projectMap[t.project_id];
       return project?.workspace_id === workspaceId;
     });
+    console.log("[Projects API] getMyTasks - tasks after workspace filter:", workspaceTasks.length);
+    if (tasks.length !== workspaceTasks.length) {
+      console.log("[Projects API] getMyTasks - filtered out", tasks.length - workspaceTasks.length, "tasks from other workspaces");
+    }
 
     const transformedTasks = workspaceTasks.map((task: any) => {
       const project = projectMap[task.project_id];
@@ -853,6 +861,146 @@ export async function getMyTasks(params?: MyTasksQueryParams): Promise<MyTasksRe
     };
   } catch (error) {
     console.error("[Projects API] getMyTasks ERROR:", error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// All Tasks (cross-project, all users)
+// ============================================================================
+
+export async function getAllTasks(params?: MyTasksQueryParams): Promise<MyTasksResponse> {
+  console.log("[Projects API] getAllTasks via Supabase", params);
+  try {
+    const workspaceId = await getWorkspaceId();
+
+    // Step 1: Get all projects in the workspace
+    const { data: projects, error: projectError } = await supabase
+      .from("projects")
+      .select("id, name, color, workspace_id")
+      .eq("workspace_id", workspaceId);
+
+    if (projectError) throw projectError;
+
+    if (!projects || projects.length === 0) {
+      return {
+        tasks: [],
+        total: 0,
+        stats: { todo: 0, in_progress: 0, review: 0, done: 0, overdue: 0 },
+      };
+    }
+
+    const projectIds = projects.map(p => p.id);
+    const projectMap: Record<string, { id: string; name: string; color: string }> =
+      Object.fromEntries(projects.map(p => [p.id, { id: p.id, name: p.name, color: p.color }]));
+
+    // Step 2: Get all tasks from these projects
+    let query = supabase
+      .from("tasks")
+      .select("*")
+      .in("project_id", projectIds);
+
+    if (params?.status) {
+      query = query.eq("status", params.status);
+    }
+    if (params?.search) {
+      query = query.ilike("title", `%${params.search}%`);
+    }
+
+    query = query.order("due_date", { ascending: true, nullsFirst: false });
+
+    if (params?.limit) {
+      query = query.limit(params.limit);
+    }
+
+    const { data: tasks, error } = await query;
+
+    if (error) throw error;
+
+    if (!tasks || tasks.length === 0) {
+      return {
+        tasks: [],
+        total: 0,
+        stats: { todo: 0, in_progress: 0, review: 0, done: 0, overdue: 0 },
+      };
+    }
+
+    const fetchedTaskIds = tasks.map(t => t.id);
+
+    // Step 3: Fetch ALL assignees for these tasks
+    const { data: allAssignees } = await supabase
+      .from("task_assignees")
+      .select("id, task_id, user_id")
+      .in("task_id", fetchedTaskIds);
+
+    // Step 4: Fetch profiles for all assignee user IDs
+    const allUserIds = [...new Set((allAssignees || []).map(a => a.user_id))];
+    let profileMap: Record<string, any> = {};
+
+    if (allUserIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, name, avatar_url")
+        .in("id", allUserIds);
+
+      if (profiles) {
+        profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
+      }
+    }
+
+    // Step 5: Group assignees by task_id
+    const assigneesByTask: Record<string, any[]> = {};
+    (allAssignees || []).forEach(a => {
+      if (!assigneesByTask[a.task_id]) {
+        assigneesByTask[a.task_id] = [];
+      }
+      assigneesByTask[a.task_id].push({
+        id: a.id,
+        task_id: a.task_id,
+        user_id: a.user_id,
+        user: profileMap[a.user_id] ? profileToUser(profileMap[a.user_id]) : undefined,
+      });
+    });
+
+    // Step 6: Merge project + assignee info
+    const transformedTasks = tasks.map((task: any) => {
+      const project = projectMap[task.project_id];
+      return {
+        ...task,
+        task_assignees: assigneesByTask[task.id] || [],
+        project: project ? {
+          id: project.id,
+          name: project.name,
+          color: project.color,
+        } : undefined,
+      };
+    }) as Task[];
+
+    // Calculate stats
+    const now = new Date();
+    const stats = {
+      todo: 0,
+      in_progress: 0,
+      review: 0,
+      done: 0,
+      overdue: 0,
+    };
+
+    transformedTasks.forEach(task => {
+      stats[task.status as keyof typeof stats]++;
+      if (task.due_date && new Date(task.due_date) < now && task.status !== "done") {
+        stats.overdue++;
+      }
+    });
+
+    console.log("[Projects API] getAllTasks response:", transformedTasks.length, "tasks");
+    return {
+      tasks: transformedTasks,
+      total: transformedTasks.length,
+      stats,
+    };
+  } catch (error) {
+    console.error("[Projects API] getAllTasks ERROR:", error);
     throw error;
   }
 }

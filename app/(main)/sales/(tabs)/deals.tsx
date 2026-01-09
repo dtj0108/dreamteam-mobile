@@ -1,10 +1,12 @@
 import { View, Text, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { useDeals, useDealStats, useMoveDealStage } from "../../../../lib/hooks/useDeals";
 import { Deal, OpportunityStage, formatCurrency } from "../../../../lib/types/sales";
 import { DealsKanbanBoard } from "../../../../components/sales/DealsKanbanBoard";
 import { StatsCard } from "../../../../components/sales/StatsCard";
+import { ProductSwitcher } from "../../../../components/ProductSwitcher";
 
 export default function DealsScreen() {
   const router = useRouter();
@@ -43,6 +45,12 @@ export default function DealsScreen() {
 
   return (
     <View className="flex-1 bg-background">
+      <SafeAreaView edges={["top"]} className="bg-background">
+        <View className="px-4 py-2">
+          <ProductSwitcher />
+        </View>
+      </SafeAreaView>
+
       {/* Stats Row */}
       <View className="flex-row gap-2 px-4 py-3">
         <StatsCard

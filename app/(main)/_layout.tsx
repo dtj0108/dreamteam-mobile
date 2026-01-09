@@ -22,8 +22,8 @@ export default function MainLayout() {
       }}
     >
       <Stack.Screen name="hub" options={{ headerShown: false, animation: "fade" }} />
-      <Stack.Screen name="finance" />
-      <Stack.Screen name="sales" />
+      <Stack.Screen name="finance" options={{ headerShown: false }} />
+      <Stack.Screen name="sales" options={{ headerShown: false }} />
       <Stack.Screen name="team" options={{ headerShown: false }} />
       <Stack.Screen name="projects" options={{ headerShown: false }} />
       <Stack.Screen name="more" />

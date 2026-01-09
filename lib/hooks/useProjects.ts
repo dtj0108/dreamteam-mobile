@@ -12,6 +12,7 @@ import {
   updateTask,
   deleteTask,
   getMyTasks,
+  getAllTasks,
   getProjectMembers,
   addProjectMember,
   removeProjectMember,
@@ -96,6 +97,7 @@ export const taskKeys = {
   detail: (projectId: string, taskId: string) =>
     [...taskKeys.details(), projectId, taskId] as const,
   myTasks: (params?: MyTasksQueryParams) => [...taskKeys.all, "my-tasks", params] as const,
+  allTasks: (params?: MyTasksQueryParams) => [...taskKeys.all, "all-tasks", params] as const,
 };
 
 // Projects queries
@@ -214,6 +216,14 @@ export function useMyTasks(params?: MyTasksQueryParams) {
   return useQuery<MyTasksResponse>({
     queryKey: taskKeys.myTasks(params),
     queryFn: () => getMyTasks(params),
+  });
+}
+
+// All Tasks query (cross-project, all users)
+export function useAllTasks(params?: MyTasksQueryParams) {
+  return useQuery<MyTasksResponse>({
+    queryKey: taskKeys.allTasks(params),
+    queryFn: () => getAllTasks(params),
   });
 }
 

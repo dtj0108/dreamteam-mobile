@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import {
   getAnalyticsOverview,
+  getBudgetVsActual,
   getCashFlow,
   getExpenseAnalysis,
   getIncomeAnalysis,
@@ -9,6 +10,7 @@ import {
 } from "../api/analytics";
 import {
   AnalyticsOverview,
+  BudgetVsActualReport,
   CashFlowGroupBy,
   CashFlowReport,
   DateRange,
@@ -28,6 +30,8 @@ export const analyticsKeys = {
     [...analyticsKeys.all, "profit-loss", dateRange] as const,
   cashFlow: (groupBy: CashFlowGroupBy, dateRange?: DateRange) =>
     [...analyticsKeys.all, "cash-flow", groupBy, dateRange] as const,
+  budgetVsActual: (dateRange?: DateRange) =>
+    [...analyticsKeys.all, "budget-vs-actual", dateRange] as const,
 };
 
 export function useAnalyticsOverview() {
@@ -66,5 +70,12 @@ export function useCashFlow(
   return useQuery<CashFlowReport>({
     queryKey: analyticsKeys.cashFlow(groupBy, dateRange),
     queryFn: () => getCashFlow(groupBy, dateRange),
+  });
+}
+
+export function useBudgetVsActual(dateRange?: DateRange) {
+  return useQuery<BudgetVsActualReport>({
+    queryKey: analyticsKeys.budgetVsActual(dateRange),
+    queryFn: () => getBudgetVsActual(dateRange),
   });
 }

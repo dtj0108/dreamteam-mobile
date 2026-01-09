@@ -7,6 +7,7 @@ export default function MoreLayout() {
       <Stack.Screen name="knowledge" options={{ headerShown: false }} />
       <Stack.Screen name="ai" options={{ title: "AI Chat" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
+      <Stack.Screen name="workspaces" options={{ title: "Workspaces" }} />
     </Stack>
   );
 }

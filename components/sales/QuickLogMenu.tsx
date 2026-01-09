@@ -182,7 +182,7 @@ export function QuickLogMenu({ onLogActivity, onCustomLog }: QuickLogMenuProps) 
       <Pressable
         onPress={isOpen ? closeMenu : openMenu}
         style={{ bottom: FAB_BOTTOM }}
-        className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg active:opacity-70"
+        className="absolute right-6 h-14 w-14 items-center justify-center rounded-full bg-foreground shadow-lg active:opacity-70"
       >
         <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
           <Ionicons name="add" size={28} color="white" />
@@ -263,7 +263,7 @@ export function QuickLogMenu({ onLogActivity, onCustomLog }: QuickLogMenuProps) 
               bottom: FAB_BOTTOM,
               right: 24,
             }}
-            className="h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg"
+            className="h-14 w-14 items-center justify-center rounded-full bg-foreground shadow-lg"
           >
             <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
               <Ionicons name="add" size={28} color="white" />

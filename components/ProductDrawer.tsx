@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/Colors";
 import { Product, PRODUCTS, useCurrentProduct } from "@/providers/product-provider";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.85;
@@ -32,6 +33,7 @@ export function ProductDrawer({ visible, onClose }: ProductDrawerProps) {
   const pathname = usePathname();
   const currentProduct = useCurrentProduct();
   const isOnHub = pathname.startsWith("/hub");
+  const { currentWorkspace } = useWorkspace();
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -84,6 +86,11 @@ export function ProductDrawer({ visible, onClose }: ProductDrawerProps) {
   const handleSettings = () => {
     onClose();
     router.push("/(main)/more/settings");
+  };
+
+  const handleWorkspaces = () => {
+    onClose();
+    router.push("/(main)/more/workspaces");
   };
 
   const handleClose = () => {
@@ -201,6 +208,32 @@ export function ProductDrawer({ visible, onClose }: ProductDrawerProps) {
                 />
               ))}
             </ScrollView>
+
+            {/* Workspace Switcher */}
+            {currentWorkspace && (
+              <View className="border-t border-border px-2 pt-2">
+                <Pressable
+                  onPress={handleWorkspaces}
+                  className="flex-row items-center rounded-lg p-3 active:bg-muted"
+                >
+                  <View className="h-10 w-10 items-center justify-center rounded-lg bg-foreground">
+                    <Text className="text-lg font-bold text-white">
+                      {currentWorkspace.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
+                      {currentWorkspace.name}
+                    </Text>
+                  </View>
+                  <FontAwesome
+                    name="chevron-right"
+                    size={14}
+                    color={Colors.mutedForeground}
+                  />
+                </Pressable>
+              </View>
+            )}
 
             {/* Bottom Actions */}
             <View className="border-t border-border px-2 pt-2">

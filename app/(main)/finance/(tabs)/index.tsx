@@ -1,17 +1,19 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
+import { useMemo } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Loading } from "@/components/Loading";
+import { ProductSwitcher } from "@/components/ProductSwitcher";
 import { Colors } from "@/constants/Colors";
 import { useAccounts } from "@/lib/hooks/useAccounts";
-import { useAnalyticsOverview } from "@/lib/hooks/useAnalytics";
 import { useTransactions } from "@/lib/hooks/useTransactions";
 import { getTransactionColor, Transaction } from "@/lib/types/finance";
 
@@ -40,20 +42,20 @@ export default function DashboardScreen() {
     isRefetching: accountsRefetching,
   } = useAccounts();
 
-  // Fetch analytics overview for monthly metrics
+  // Fetch ALL transactions (no date filter) for metrics calculation
   const {
-    data: analyticsData,
-    isLoading: analyticsLoading,
-    refetch: refetchAnalytics,
-    isRefetching: analyticsRefetching,
-  } = useAnalyticsOverview();
+    data: allTransactionsData,
+    isLoading: allTransactionsLoading,
+    refetch: refetchAllTransactions,
+    isRefetching: allTransactionsRefetching,
+  } = useTransactions({});
 
-  // Fetch recent transactions (limit 5)
+  // Fetch recent transactions (limit 5) for display
   const {
-    data: transactionsData,
-    isLoading: transactionsLoading,
-    refetch: refetchTransactions,
-    isRefetching: transactionsRefetching,
+    data: recentTransactionsData,
+    isLoading: recentTransactionsLoading,
+    refetch: refetchRecentTransactions,
+    isRefetching: recentTransactionsRefetching,
   } = useTransactions({ limit: 5 });
 
   // Derived state with defaults
@@ -62,34 +64,49 @@ export default function DashboardScreen() {
     assets: 0,
     liabilities: 0,
   };
-  const analytics = analyticsData ?? {
-    currentMonth: { income: 0, expenses: 0, profit: 0 },
-    lastMonth: { income: 0, expenses: 0, profit: 0 },
-    changes: { income: 0, expenses: 0, profit: 0 },
-    totalBalance: 0,
-  };
-  const recentTransactions = transactionsData?.transactions ?? [];
+  const recentTransactions = recentTransactionsData?.transactions ?? [];
 
-  const isLoading = accountsLoading || analyticsLoading || transactionsLoading;
+  // Calculate income/expenses/profit using category.type
+  const { income, expenses, profit } = useMemo(() => {
+    const transactions = allTransactionsData?.transactions ?? [];
+    let inc = 0;
+    let exp = 0;
+    transactions.forEach((txn) => {
+      const amount = Math.abs(txn.amount);
+      if (txn.category?.type === "income") {
+        inc += amount;
+      } else {
+        // Default to expense if no category or category.type is "expense"
+        exp += amount;
+      }
+    });
+    return { income: inc, expenses: exp, profit: inc - exp };
+  }, [allTransactionsData]);
+
+  // Calculate savings rate
+  const savingsRate = income > 0 ? Math.round((profit / income) * 100) : 0;
+
+  const isLoading =
+    accountsLoading || allTransactionsLoading || recentTransactionsLoading;
   const isRefetching =
-    accountsRefetching || analyticsRefetching || transactionsRefetching;
+    accountsRefetching ||
+    allTransactionsRefetching ||
+    recentTransactionsRefetching;
 
   const handleRefresh = () => {
     refetchAccounts();
-    refetchAnalytics();
-    refetchTransactions();
+    refetchAllTransactions();
+    refetchRecentTransactions();
   };
-
-  // Calculate savings rate
-  const savingsRate =
-    analytics.currentMonth.income > 0
-      ? Math.round(
-          (analytics.currentMonth.profit / analytics.currentMonth.income) * 100
-        )
-      : 0;
 
   return (
     <View className="flex-1 bg-background">
+      <SafeAreaView edges={["top"]} className="bg-background">
+        <View className="px-4 py-2">
+          <ProductSwitcher />
+        </View>
+      </SafeAreaView>
+
       <ScrollView
         className="flex-1 px-4"
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -106,12 +123,7 @@ export default function DashboardScreen() {
         </View>
 
         {isLoading ? (
-          <View className="items-center py-12">
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text className="mt-2 text-muted-foreground">
-              Loading dashboard...
-            </Text>
-          </View>
+          <Loading />
         ) : (
           <>
             {/* Net Worth Card */}
@@ -140,33 +152,28 @@ export default function DashboardScreen() {
             <View className="mb-4 flex-row gap-3">
               <MetricCard
                 title="Income"
-                value={formatCurrency(analytics.currentMonth.income)}
-                change={analytics.changes.income}
+                value={formatCurrency(income)}
                 icon="arrow-down"
                 iconColor={Colors.success}
               />
               <MetricCard
                 title="Expenses"
-                value={formatCurrency(analytics.currentMonth.expenses)}
-                change={analytics.changes.expenses}
+                value={formatCurrency(expenses)}
                 icon="arrow-up"
                 iconColor={Colors.destructive}
-                invertChangeColor
               />
             </View>
 
             <View className="mb-4 flex-row gap-3">
               <MetricCard
                 title="Profit"
-                value={formatCurrency(analytics.currentMonth.profit)}
-                change={analytics.changes.profit}
+                value={formatCurrency(profit)}
                 icon="line-chart"
-                iconColor={Colors.primary}
+                iconColor={profit >= 0 ? Colors.success : Colors.destructive}
               />
               <MetricCard
                 title="Savings Rate"
                 value={`${savingsRate}%`}
-                change={0}
                 icon="dollar"
                 iconColor={Colors.warning}
               />
@@ -228,6 +235,11 @@ export default function DashboardScreen() {
                   label="Add Account"
                   onPress={() => router.push("/(main)/finance/accounts/new")}
                 />
+                <QuickActionButton
+                  icon="tags"
+                  label="Categories"
+                  onPress={() => router.push("/(main)/finance/categories")}
+                />
               </View>
             </View>
           </>
@@ -240,27 +252,14 @@ export default function DashboardScreen() {
 function MetricCard({
   title,
   value,
-  change,
   icon,
   iconColor,
-  invertChangeColor = false,
 }: {
   title: string;
   value: string;
-  change: number;
   icon: React.ComponentProps<typeof FontAwesome>["name"];
   iconColor: string;
-  invertChangeColor?: boolean;
 }) {
-  // For expenses, positive change is bad (red), negative is good (green)
-  const isPositiveChange = invertChangeColor ? change < 0 : change > 0;
-  const changeColor =
-    change === 0
-      ? "text-muted-foreground"
-      : isPositiveChange
-        ? "text-green-500"
-        : "text-red-500";
-
   return (
     <View className="flex-1 rounded-xl bg-muted p-4">
       <View className="mb-2 flex-row items-center justify-between">
@@ -268,12 +267,7 @@ function MetricCard({
         <FontAwesome name={icon} size={16} color={iconColor} />
       </View>
       <Text className="text-xl font-bold text-foreground">{value}</Text>
-      {change !== 0 && (
-        <Text className={`text-sm ${changeColor}`}>
-          {change > 0 ? "+" : ""}
-          {change.toFixed(1)}% vs last month
-        </Text>
-      )}
+      <Text className="text-xs text-muted-foreground">All time</Text>
     </View>
   );
 }

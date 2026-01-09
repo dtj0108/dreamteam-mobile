@@ -2,7 +2,6 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GoalCard } from "@/components/finance/GoalCard";
+import { Loading } from "@/components/Loading";
 import { Colors } from "@/constants/Colors";
 import { useGoalsByType } from "@/lib/hooks/useGoals";
 import { GOAL_TYPE_COLORS } from "@/lib/types/finance";
@@ -56,9 +56,7 @@ export default function RevenueGoalsScreen() {
         }
       >
         {isLoading ? (
-          <View className="items-center py-12">
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
+          <Loading />
         ) : (
           <>
             {/* Active Goals */}

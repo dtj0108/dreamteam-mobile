@@ -73,3 +73,115 @@ export async function updateTransaction(
 export async function deleteTransaction(id: string): Promise<void> {
   return del(`/api/transactions/${id}`);
 }
+
+// AI Categorization
+export interface CategorizeSuggestion {
+  description: string;
+  categoryId: string;
+  categoryName: string;
+  confidence: "high" | "medium" | "low";
+}
+
+export interface CategorizeResponse {
+  success: boolean;
+  suggestions: CategorizeSuggestion[];
+  categoriesUsed: number;
+}
+
+export async function categorizeTransactions(
+  descriptions: string[]
+): Promise<CategorizeResponse> {
+  return post<CategorizeResponse>("/api/transactions/categorize", {
+    descriptions,
+  });
+}
+
+// Bulk Operations
+export interface BulkUpdateInput {
+  transaction_ids: string[];
+  category_id: string;
+}
+
+export interface BulkUpdateResponse {
+  success: boolean;
+  updated: number;
+}
+
+export async function bulkUpdateTransactions(
+  data: BulkUpdateInput
+): Promise<BulkUpdateResponse> {
+  return post<BulkUpdateResponse>("/api/transactions/bulk-update", data);
+}
+
+export interface BulkDeleteInput {
+  transaction_ids: string[];
+}
+
+export interface BulkDeleteResponse {
+  success: boolean;
+  deleted: number;
+}
+
+export async function bulkDeleteTransactions(
+  data: BulkDeleteInput
+): Promise<BulkDeleteResponse> {
+  return post<BulkDeleteResponse>("/api/transactions/bulk-delete", data);
+}
+
+// Import
+export interface ImportTransactionInput {
+  date: string;
+  amount: number;
+  description: string;
+  notes?: string;
+  category_id?: string;
+}
+
+export interface ImportTransactionsInput {
+  account_id: string;
+  skip_duplicates?: boolean;
+  transactions: ImportTransactionInput[];
+}
+
+export interface ImportResponse {
+  success: boolean;
+  imported: number;
+  total: number;
+  failed: number;
+  skipped_duplicates: number;
+  account: string;
+}
+
+export async function importTransactions(
+  data: ImportTransactionsInput
+): Promise<ImportResponse> {
+  return post<ImportResponse>("/api/transactions/import", data);
+}
+
+// Duplicate Check
+export interface DuplicateCheckInput {
+  account_id: string;
+  transactions: Array<{
+    date: string;
+    amount: number;
+    description: string;
+  }>;
+}
+
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  similarity: number;
+  matchedTransaction: Transaction | null;
+}
+
+export interface DuplicateCheckResponse {
+  results: DuplicateCheckResult[];
+  duplicateCount: number;
+  totalChecked: number;
+}
+
+export async function checkDuplicates(
+  data: DuplicateCheckInput
+): Promise<DuplicateCheckResponse> {
+  return post<DuplicateCheckResponse>("/api/transactions/check-duplicates", data);
+}
