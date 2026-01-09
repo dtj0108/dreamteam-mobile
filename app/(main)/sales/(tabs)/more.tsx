@@ -1,14 +1,22 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/Colors";
+import { ProductSwitcher } from "../../../../components/ProductSwitcher";
 
 export default function MoreScreen() {
   const router = useRouter();
 
   return (
     <View className="flex-1 bg-background">
+      <SafeAreaView edges={["top"]} className="bg-background">
+        <View className="px-4 py-2">
+          <ProductSwitcher />
+        </View>
+      </SafeAreaView>
+
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View className="py-4">
@@ -21,20 +29,11 @@ export default function MoreScreen() {
         {/* Menu Items */}
         <View className="gap-2">
           <MenuItem
-            icon="dollar"
-            iconColor="#22c55e"
-            title="Deals"
-            subtitle="Manage sales opportunities"
-            onPress={() => {}}
-            comingSoon
-          />
-          <MenuItem
-            icon="history"
-            iconColor="#3b82f6"
-            title="Activities"
-            subtitle="Log calls, emails & meetings"
-            onPress={() => {}}
-            comingSoon
+            icon="bar-chart"
+            iconColor="#8b5cf6"
+            title="Reports"
+            subtitle="Pipeline & activity analytics"
+            onPress={() => router.push("/(main)/sales/reports")}
           />
           <MenuItem
             icon="envelope"
@@ -60,14 +59,6 @@ export default function MoreScreen() {
             iconColor="#0ea5e9"
             title="Workflows"
             subtitle="Sales automation"
-            onPress={() => {}}
-            comingSoon
-          />
-          <MenuItem
-            icon="bar-chart"
-            iconColor="#6b7280"
-            title="Reports"
-            subtitle="Pipeline & activity analytics"
             onPress={() => {}}
             comingSoon
           />

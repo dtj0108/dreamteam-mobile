@@ -1,229 +1,238 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
-  TextInput,
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { FontAwesome } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import Colors from "@/constants/Colors";
-import { useChannels } from "@/lib/hooks/useTeam";
+import { ProductSwitcher } from "@/components/ProductSwitcher";
+
+import { Colors } from "@/constants/Colors";
+import { useChannels, useDMConversations } from "@/lib/hooks/useTeam";
 import { ChannelWithMembership } from "@/lib/types/team";
+import { QuickActionCard } from "@/components/team/QuickActionCard";
+import { CollapsibleSection } from "@/components/team/CollapsibleSection";
 import { ChannelListItem } from "@/components/team/ChannelListItem";
+import { FABMenu } from "@/components/team/FABMenu";
 
-type FilterType = "all" | "joined" | "starred";
-
-export default function ChannelsScreen() {
+export default function HomeScreen() {
   const router = useRouter();
-  const [filter, setFilter] = useState<FilterType>("joined");
-  const [searchQuery, setSearchQuery] = useState("");
+  const insets = useSafeAreaInsets();
 
-  // Fetch channels based on filter
-  const queryParams = useMemo(() => {
-    if (filter === "joined") return { joined: true };
-    if (filter === "starred") return { starred: true };
-    return {};
-  }, [filter]);
-
+  // Fetch channels and DMs
   const {
     data: channelsData,
-    isLoading,
-    refetch,
-  } = useChannels(queryParams);
+    isLoading: channelsLoading,
+    refetch: refetchChannels,
+  } = useChannels({ joined: true });
+
+  const {
+    data: dmsData,
+    isLoading: dmsLoading,
+    refetch: refetchDMs,
+  } = useDMConversations();
 
   const channels = channelsData?.channels || [];
+  const dms = dmsData?.conversations || [];
+  const isLoading = channelsLoading || dmsLoading;
 
-  // Filter channels by search query
-  const filteredChannels = useMemo(() => {
-    if (!searchQuery) return channels;
-    const query = searchQuery.toLowerCase();
-    return channels.filter(
-      (channel) =>
-        channel.name.toLowerCase().includes(query) ||
-        channel.description?.toLowerCase().includes(query)
-    );
-  }, [channels, searchQuery]);
+  // Calculate unreads - channels and DMs with unread messages
+  const unreads = useMemo(() => {
+    const unreadChannels = channels
+      .filter((c) => (c.unread_count || 0) > 0)
+      .map((c) => ({
+        type: "channel" as const,
+        id: c.id,
+        name: c.name,
+        unreadCount: c.unread_count || 0,
+        isPrivate: c.type === "private",
+      }));
 
-  // Separate starred and regular channels
-  const { starredChannels, regularChannels } = useMemo(() => {
-    const starred = filteredChannels.filter((c) => c.membership?.is_starred);
-    const regular = filteredChannels.filter((c) => !c.membership?.is_starred);
-    return { starredChannels: starred, regularChannels: regular };
-  }, [filteredChannels]);
+    const unreadDMs = dms
+      .filter((d) => (d.unread_count || 0) > 0)
+      .map((d) => ({
+        type: "dm" as const,
+        id: d.id,
+        name: d.participant?.display_name || d.participant?.user?.name || "Unknown",
+        unreadCount: d.unread_count || 0,
+        avatarUrl: d.participant?.user?.avatar_url,
+      }));
 
-  // Calculate stats
-  const totalUnread = useMemo(() => {
-    return channels.reduce((sum, c) => sum + (c.unread_count || 0), 0);
-  }, [channels]);
+    return [...unreadChannels, ...unreadDMs];
+  }, [channels, dms]);
+
+  // Calculate totals
+  const totalUnread = unreads.reduce((sum, u) => sum + u.unreadCount, 0);
 
   // Handlers
   const handleChannelPress = (channel: ChannelWithMembership) => {
     router.push(`/(main)/team/channels/${channel.id}`);
   };
 
+  const handleUnreadPress = (item: (typeof unreads)[0]) => {
+    if (item.type === "channel") {
+      router.push(`/(main)/team/channels/${item.id}`);
+    } else {
+      router.push(`/(main)/team/dm/${item.id}`);
+    }
+  };
+
   const handleCreateChannel = () => {
     router.push("/(main)/team/channels/new");
   };
 
-  const FilterButton = ({
-    type,
-    label,
-    icon,
-  }: {
-    type: FilterType;
-    label: string;
-    icon: string;
-  }) => (
-    <Pressable
-      className={`flex-row items-center rounded-lg px-3 py-2 ${
-        filter === type ? "bg-primary" : "bg-muted"
-      }`}
-      onPress={() => setFilter(type)}
-    >
-      <FontAwesome
-        name={icon as any}
-        size={12}
-        color={filter === type ? "white" : Colors.mutedForeground}
-      />
-      <Text
-        className={`ml-2 text-sm font-medium ${
-          filter === type ? "text-white" : "text-muted-foreground"
-        }`}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
+  const handleRefresh = () => {
+    refetchChannels();
+    refetchDMs();
+  };
 
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="px-4 py-4">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-2xl font-bold text-foreground">Channels</Text>
-            <Text className="text-sm text-muted-foreground">
-              {channels.length} channels
-              {totalUnread > 0 && ` • ${totalUnread} unread`}
-            </Text>
-          </View>
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-primary active:opacity-70"
-            onPress={handleCreateChannel}
-          >
-            <FontAwesome name="plus" size={16} color="white" />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Filters */}
-      <View className="flex-row gap-2 px-4 py-2">
-        <FilterButton type="joined" label="Joined" icon="check-circle" />
-        <FilterButton type="starred" label="Starred" icon="star" />
-        <FilterButton type="all" label="All" icon="th-list" />
-      </View>
-
-      {/* Search */}
+    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
+      {/* Header with ProductSwitcher */}
       <View className="px-4 py-2">
-        <View className="flex-row items-center rounded-lg bg-muted px-3 py-2">
-          <FontAwesome name="search" size={14} color="#9ca3af" />
-          <TextInput
-            className="ml-2 flex-1 text-foreground"
-            placeholder="Search channels..."
-            placeholderTextColor="#9ca3af"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery("")}>
-              <FontAwesome name="times-circle" size={14} color="#9ca3af" />
-            </Pressable>
-          )}
-        </View>
+        <ProductSwitcher />
       </View>
 
-      {/* Content */}
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : (
         <ScrollView
-          className="flex-1 px-4"
+          className="flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refetch} />
+            <RefreshControl refreshing={false} onRefresh={handleRefresh} />
           }
         >
-          {filteredChannels.length === 0 ? (
-            <View className="flex-1 items-center justify-center py-12">
-              <FontAwesome name="hashtag" size={48} color="#d1d5db" />
-              <Text className="mt-4 text-lg font-medium text-foreground">
-                No channels found
-              </Text>
-              <Text className="mt-1 text-center text-muted-foreground">
-                {filter === "starred"
-                  ? "Star channels to see them here"
-                  : filter === "joined"
-                  ? "Join channels to start messaging"
-                  : "No channels match your search"}
-              </Text>
-              {filter !== "all" && (
+          {/* Quick Action Cards */}
+          <View className="flex-row gap-3 px-4 py-4">
+            <QuickActionCard
+              icon="cafe-outline"
+              title="Catch Up"
+              subtitle={totalUnread > 0 ? `${totalUnread} new` : "All caught up"}
+              hasNotification={totalUnread > 0}
+              isActive={totalUnread > 0}
+              flex
+            />
+            <QuickActionCard
+              icon="chatbubbles-outline"
+              title="Threads"
+              subtitle="0 new"
+              flex
+            />
+            <QuickActionCard
+              icon="headset-outline"
+              title="Huddles"
+              subtitle="0 live"
+              flex
+            />
+          </View>
+
+          {/* Unreads Section */}
+          {unreads.length > 0 && (
+            <CollapsibleSection title="Unreads" defaultExpanded={true}>
+              {unreads.map((item) => (
+                <Pressable
+                  key={`${item.type}-${item.id}`}
+                  onPress={() => handleUnreadPress(item)}
+                  className="mb-2 flex-row items-center rounded-xl bg-white p-3"
+                >
+                  <View className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100">
+                    {item.type === "channel" ? (
+                      item.isPrivate ? (
+                        <Ionicons name="lock-closed" size={20} color="#64748b" />
+                      ) : (
+                        <Text className="text-lg font-bold text-gray-500">#</Text>
+                      )
+                    ) : (
+                      <View className="h-10 w-10 items-center justify-center rounded-full bg-sky-100">
+                        <Text className="text-sm font-semibold text-sky-600">
+                          {item.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text className="ml-3 flex-1 text-base font-medium text-foreground">
+                    {item.type === "channel" ? `#${item.name}` : item.name}
+                  </Text>
+                  <View className="rounded-full bg-primary px-2.5 py-1">
+                    <Text className="text-xs font-semibold text-white">
+                      {item.unreadCount > 99 ? "99+" : item.unreadCount}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+
+              {/* Add channel button */}
+              <Pressable
+                onPress={handleCreateChannel}
+                className="flex-row items-center py-2"
+              >
+                <Ionicons name="add" size={20} color="#64748b" />
+                <Text className="ml-2 text-base text-muted-foreground">
+                  Add channel
+                </Text>
+              </Pressable>
+            </CollapsibleSection>
+          )}
+
+          {/* Channels Section */}
+          <CollapsibleSection
+            title="Channels"
+            defaultExpanded={true}
+            rightElement={
+              <Pressable onPress={handleCreateChannel} className="mr-2">
+                <Ionicons name="add-circle-outline" size={20} color="#64748b" />
+              </Pressable>
+            }
+          >
+            {channels.length === 0 ? (
+              <View className="items-center py-8">
+                <Ionicons name="chatbubbles-outline" size={48} color="#d1d5db" />
+                <Text className="mt-4 text-base font-medium text-foreground">
+                  No channels yet
+                </Text>
+                <Text className="mt-1 text-center text-sm text-muted-foreground">
+                  Create a channel to start messaging
+                </Text>
                 <Pressable
                   className="mt-4 flex-row items-center rounded-full bg-primary px-4 py-2 active:opacity-70"
                   onPress={handleCreateChannel}
                 >
-                  <FontAwesome name="plus" size={12} color="white" />
+                  <Ionicons name="add" size={16} color="white" />
                   <Text className="ml-2 font-medium text-white">
                     Create Channel
                   </Text>
                 </Pressable>
-              )}
-            </View>
-          ) : (
-            <>
-              {/* Starred Channels */}
-              {starredChannels.length > 0 && (
-                <View className="mb-4">
-                  <Text className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                    Starred
-                  </Text>
-                  {starredChannels.map((channel) => (
-                    <ChannelListItem
-                      key={channel.id}
-                      channel={channel}
-                      onPress={() => handleChannelPress(channel)}
-                    />
-                  ))}
-                </View>
-              )}
-
-              {/* Regular Channels */}
-              {regularChannels.length > 0 && (
-                <View>
-                  {starredChannels.length > 0 && (
-                    <Text className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                      Channels
-                    </Text>
-                  )}
-                  {regularChannels.map((channel) => (
-                    <ChannelListItem
-                      key={channel.id}
-                      channel={channel}
-                      onPress={() => handleChannelPress(channel)}
-                    />
-                  ))}
-                </View>
-              )}
-            </>
-          )}
+              </View>
+            ) : (
+              channels.map((channel) => (
+                <ChannelListItem
+                  key={channel.id}
+                  channel={channel}
+                  onPress={() => handleChannelPress(channel)}
+                />
+              ))
+            )}
+          </CollapsibleSection>
         </ScrollView>
       )}
+
+      {/* FAB Menu */}
+      <FABMenu
+        onCreateChannel={handleCreateChannel}
+        onStartDM={() => router.push("/(main)/team/dm/new")}
+        onStartHuddle={() => {
+          // Placeholder for huddle functionality
+        }}
+      />
     </View>
   );
 }

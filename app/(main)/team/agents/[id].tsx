@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,12 @@ import {
   FlatList,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FontAwesome } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { useAgent } from "@/lib/hooks/useTeam";
 import { useAgentChat } from "@/lib/hooks/useAgentChat";
 import { AgentMessage as AgentMessageType } from "@/lib/types/team";
@@ -23,7 +24,17 @@ import { AgentMessage } from "@/components/team/AgentMessage";
 export default function AgentChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
+
+  // Hide parent header
+  useLayoutEffect(() => {
+    navigation.getParent()?.getParent()?.setOptions({ headerShown: false });
+    return () => {
+      navigation.getParent()?.getParent()?.setOptions({ headerShown: true });
+    };
+  }, [navigation]);
 
   // Fetch agent details
   const { data: agent, isLoading: agentLoading } = useAgent(id);
@@ -93,18 +104,18 @@ export default function AgentChatScreen() {
 
   if (!id) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
+      <View className="flex-1 items-center justify-center bg-background">
         <Text className="text-muted-foreground">Agent not found</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
       >
         {/* Header */}
         <View className="flex-row items-center border-b border-border px-4 py-3">
@@ -214,7 +225,7 @@ export default function AgentChatScreen() {
           disabled={isStreaming}
         />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

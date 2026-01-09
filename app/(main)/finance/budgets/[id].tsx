@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Loading } from "@/components/Loading";
 import { Colors } from "@/constants/Colors";
 import {
   useBudget,
@@ -147,8 +148,8 @@ export default function BudgetDetailScreen() {
 
   if (isLoading || !budget) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color={Colors.primary} />
+      <SafeAreaView className="flex-1 bg-background">
+        <Loading />
       </SafeAreaView>
     );
   }

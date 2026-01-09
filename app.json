@@ -1,42 +1,69 @@
 {
   "expo": {
-    "name": "dreamteam-mobile",
+    "name": "dreamteam",
     "slug": "dreamteam-mobile",
-    "version": "1.0.0",
+    "version": "1.0.6",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./dreamteamlogo.png",
     "scheme": "dreamteammobile",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
       "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/ab48433b-e096-4b11-9976-06ab2a034d33"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dreamteam.mobile"
+      "bundleIdentifier": "ai.dreamteam.app",
+      "buildNumber": "6",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./dreamteamlogo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.dreamteam.mobile"
+      "package": "ai.dreamteam.app"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./dreamteamlogo.png"
     },
     "plugins": [
       "expo-router",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#0ea5e9",
+          "defaultChannel": "default"
+        }
+      ],
+      "expo-mail-composer",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ab48433b-e096-4b11-9976-06ab2a034d33"
+      }
     }
   }
 }

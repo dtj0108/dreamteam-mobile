@@ -310,8 +310,9 @@ export function useSendChannelMessage() {
       data: SendMessageInput;
     }) => sendChannelMessage(channelId, data),
     onSuccess: (_, { channelId }) => {
+      // Use detail key as prefix to match all message queries regardless of params
       queryClient.invalidateQueries({
-        queryKey: teamKeys.channels.messages(channelId),
+        queryKey: teamKeys.channels.detail(channelId),
       });
     },
   });
@@ -338,9 +339,9 @@ export function useUpdateMessage() {
           queryKey: teamKeys.channels.messages(updatedMessage.channel_id),
         });
       }
-      if (updatedMessage.dm_id) {
+      if (updatedMessage.dm_conversation_id) {
         queryClient.invalidateQueries({
-          queryKey: teamKeys.dms.messages(updatedMessage.dm_id),
+          queryKey: teamKeys.dms.messages(updatedMessage.dm_conversation_id),
         });
       }
       if (updatedMessage.thread_id) {
@@ -487,7 +488,8 @@ export function useSendDMMessage() {
     mutationFn: ({ dmId, data }: { dmId: string; data: SendMessageInput }) =>
       sendDMMessage(dmId, data),
     onSuccess: (_, { dmId }) => {
-      queryClient.invalidateQueries({ queryKey: teamKeys.dms.messages(dmId) });
+      // Use detail key as prefix to match all message queries regardless of params
+      queryClient.invalidateQueries({ queryKey: teamKeys.dms.detail(dmId) });
       queryClient.invalidateQueries({ queryKey: teamKeys.dms.list() });
     },
   });

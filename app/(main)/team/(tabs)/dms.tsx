@@ -10,11 +10,14 @@ import {
   FlatList,
   Modal,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { FontAwesome } from "@expo/vector-icons";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import Colors from "@/constants/Colors";
+import { ProductSwitcher } from "@/components/ProductSwitcher";
+import { useAuth } from "@/providers/auth-provider";
+
+import { Colors } from "@/constants/Colors";
 import {
   useDMConversations,
   useWorkspaceMembers,
@@ -23,10 +26,12 @@ import {
 import { DirectMessageConversation, WorkspaceMember } from "@/lib/types/team";
 import { DMListItem } from "@/components/team/DMListItem";
 import { UserListItem } from "@/components/team/UserListItem";
+import { CollapsibleSection } from "@/components/team/CollapsibleSection";
 
 export default function DMListScreen() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [showNewDMModal, setShowNewDMModal] = useState(false);
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
 
@@ -38,7 +43,7 @@ export default function DMListScreen() {
   } = useDMConversations();
 
   // Fetch workspace members for new DM modal
-  const { data: membersData, isLoading: membersLoading } = useWorkspaceMembers();
+  const { data: membersData, isLoading: membersLoading, refetch: refetchMembers } = useWorkspaceMembers();
 
   // Start DM mutation
   const startDMMutation = useStartDMConversation();
@@ -46,30 +51,25 @@ export default function DMListScreen() {
   const conversations = dmsData?.conversations || [];
   const members = membersData?.members || [];
 
-  // Filter conversations by search
-  const filteredConversations = useMemo(() => {
-    if (!searchQuery) return conversations;
-    const query = searchQuery.toLowerCase();
-    return conversations.filter((dm) =>
-      dm.participant?.user.name.toLowerCase().includes(query)
-    );
-  }, [conversations, searchQuery]);
+  // Split conversations into unreads and all
+  const { unreads, allConversations } = useMemo(() => {
+    const unreads = conversations.filter((dm) => (dm.unread_count || 0) > 0);
+    return { unreads, allConversations: conversations };
+  }, [conversations]);
 
-  // Filter members for new DM modal
+  // Filter members for new DM modal (exclude current user)
   const filteredMembers = useMemo(() => {
-    if (!memberSearchQuery) return members;
+    // First filter out the current user
+    const otherMembers = members.filter((m) => m.user_id !== user?.id);
+
+    if (!memberSearchQuery) return otherMembers;
     const query = memberSearchQuery.toLowerCase();
-    return members.filter(
+    return otherMembers.filter(
       (m) =>
         m.user.name.toLowerCase().includes(query) ||
         m.user.email.toLowerCase().includes(query)
     );
-  }, [members, memberSearchQuery]);
-
-  // Calculate total unread
-  const totalUnread = useMemo(() => {
-    return conversations.reduce((sum, dm) => sum + (dm.unread_count || 0), 0);
-  }, [conversations]);
+  }, [members, memberSearchQuery, user?.id]);
 
   // Handlers
   const handleDMPress = (dm: DirectMessageConversation) => {
@@ -78,6 +78,7 @@ export default function DMListScreen() {
 
   const handleNewDM = () => {
     setShowNewDMModal(true);
+    refetchMembers(); // Force refetch to clear any cached errors
   };
 
   const handleSelectMember = async (member: WorkspaceMember) => {
@@ -93,93 +94,94 @@ export default function DMListScreen() {
     }
   };
 
+  const handleRefresh = () => {
+    refetch();
+  };
+
   return (
-    <View className="flex-1 bg-background">
-      {/* Header */}
-      <View className="px-4 py-4">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-2xl font-bold text-foreground">
-              Direct Messages
-            </Text>
-            <Text className="text-sm text-muted-foreground">
-              {conversations.length} conversations
-              {totalUnread > 0 && ` • ${totalUnread} unread`}
-            </Text>
-          </View>
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-primary active:opacity-70"
-            onPress={handleNewDM}
-          >
-            <FontAwesome name="plus" size={16} color="white" />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Search */}
+    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
+      {/* Header with ProductSwitcher */}
       <View className="px-4 py-2">
-        <View className="flex-row items-center rounded-lg bg-muted px-3 py-2">
-          <FontAwesome name="search" size={14} color="#9ca3af" />
-          <TextInput
-            className="ml-2 flex-1 text-foreground"
-            placeholder="Search conversations..."
-            placeholderTextColor="#9ca3af"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery("")}>
-              <FontAwesome name="times-circle" size={14} color="#9ca3af" />
-            </Pressable>
-          )}
-        </View>
+        <ProductSwitcher />
       </View>
 
-      {/* Content */}
       {dmsLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : (
         <ScrollView
-          className="flex-1 px-4"
+          className="flex-1"
           contentContainerStyle={{ paddingBottom: 100 }}
           refreshControl={
-            <RefreshControl refreshing={false} onRefresh={refetch} />
+            <RefreshControl refreshing={false} onRefresh={handleRefresh} />
           }
         >
-          {filteredConversations.length === 0 ? (
-            <View className="flex-1 items-center justify-center py-12">
-              <FontAwesome name="comments-o" size={48} color="#d1d5db" />
-              <Text className="mt-4 text-lg font-medium text-foreground">
-                {searchQuery ? "No conversations found" : "No direct messages"}
-              </Text>
-              <Text className="mt-1 text-center text-muted-foreground">
-                {searchQuery
-                  ? "Try a different search"
-                  : "Start a conversation with a team member"}
-              </Text>
-              {!searchQuery && (
+          {/* Unreads Section */}
+          {unreads.length > 0 && (
+            <CollapsibleSection title="Unreads" defaultExpanded={true}>
+              {unreads.map((dm) => (
+                <DMListItem
+                  key={dm.id}
+                  conversation={dm}
+                  onPress={() => handleDMPress(dm)}
+                />
+              ))}
+            </CollapsibleSection>
+          )}
+
+          {/* All Messages Section */}
+          <CollapsibleSection
+            title="Direct Messages"
+            defaultExpanded={true}
+            rightElement={
+              <Pressable onPress={handleNewDM} className="mr-2">
+                <Ionicons name="add-circle-outline" size={20} color="#64748b" />
+              </Pressable>
+            }
+          >
+            {allConversations.length === 0 ? (
+              <View className="items-center py-8">
+                <Ionicons name="chatbubble-ellipses-outline" size={48} color="#d1d5db" />
+                <Text className="mt-4 text-base font-medium text-foreground">
+                  No conversations yet
+                </Text>
+                <Text className="mt-1 text-center text-sm text-muted-foreground">
+                  Start a conversation with a team member
+                </Text>
                 <Pressable
                   className="mt-4 flex-row items-center rounded-full bg-primary px-4 py-2 active:opacity-70"
                   onPress={handleNewDM}
                 >
-                  <FontAwesome name="plus" size={12} color="white" />
+                  <Ionicons name="add" size={16} color="white" />
                   <Text className="ml-2 font-medium text-white">
-                    Start Conversation
+                    New Message
                   </Text>
                 </Pressable>
-              )}
-            </View>
-          ) : (
-            filteredConversations.map((dm) => (
-              <DMListItem
-                key={dm.id}
-                conversation={dm}
-                onPress={() => handleDMPress(dm)}
-              />
-            ))
-          )}
+              </View>
+            ) : (
+              allConversations.map((dm) => (
+                <DMListItem
+                  key={dm.id}
+                  conversation={dm}
+                  onPress={() => handleDMPress(dm)}
+                />
+              ))
+            )}
+
+            {/* Add message button at bottom of list */}
+            {allConversations.length > 0 && (
+              <Pressable
+                onPress={handleNewDM}
+                className="flex-row items-center py-2"
+              >
+                <Ionicons name="add" size={20} color="#64748b" />
+                <Text className="ml-2 text-base text-muted-foreground">
+                  New message
+                </Text>
+              </Pressable>
+            )}
+          </CollapsibleSection>
         </ScrollView>
       )}
 
@@ -200,7 +202,7 @@ export default function DMListScreen() {
                 setMemberSearchQuery("");
               }}
             >
-              <FontAwesome name="times" size={18} color={Colors.foreground} />
+              <Ionicons name="close" size={22} color="#0f172a" />
             </Pressable>
             <Text className="flex-1 text-lg font-semibold text-foreground">
               New Message
@@ -210,7 +212,7 @@ export default function DMListScreen() {
           {/* Member Search */}
           <View className="px-4 py-3">
             <View className="flex-row items-center rounded-lg bg-muted px-3 py-2">
-              <FontAwesome name="search" size={14} color="#9ca3af" />
+              <Ionicons name="search" size={18} color="#9ca3af" />
               <TextInput
                 className="ml-2 flex-1 text-foreground"
                 placeholder="Search team members..."
@@ -221,7 +223,7 @@ export default function DMListScreen() {
               />
               {memberSearchQuery.length > 0 && (
                 <Pressable onPress={() => setMemberSearchQuery("")}>
-                  <FontAwesome name="times-circle" size={14} color="#9ca3af" />
+                  <Ionicons name="close-circle" size={18} color="#9ca3af" />
                 </Pressable>
               )}
             </View>
@@ -237,6 +239,13 @@ export default function DMListScreen() {
               data={filteredMembers}
               keyExtractor={(item) => item.id}
               contentContainerStyle={{ paddingHorizontal: 16 }}
+              ListHeaderComponent={
+                filteredMembers.length > 0 ? (
+                  <Text className="mb-2 text-sm font-medium text-muted-foreground">
+                    {memberSearchQuery ? "Results" : "Suggested"}
+                  </Text>
+                ) : null
+              }
               renderItem={({ item }) => (
                 <UserListItem
                   member={item}
@@ -245,8 +254,12 @@ export default function DMListScreen() {
               )}
               ListEmptyComponent={
                 <View className="items-center justify-center py-12">
-                  <Text className="text-muted-foreground">
-                    No members found
+                  <Ionicons name="people-outline" size={48} color="#d1d5db" />
+                  <Text className="mt-4 text-base font-medium text-foreground">
+                    No team members yet
+                  </Text>
+                  <Text className="mt-1 text-center text-sm text-muted-foreground">
+                    Invite team members from the web app to start messaging
                   </Text>
                 </View>
               }

@@ -4,12 +4,16 @@ export default function SalesTabsLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
+        <Icon sf={{ default: "building.2", selected: "building.2.fill" }} />
+        <Label>Leads</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="pipeline">
         <Icon sf={{ default: "square.grid.2x2", selected: "square.grid.2x2.fill" }} />
         <Label>Pipeline</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="leads">
-        <Icon sf={{ default: "building.2", selected: "building.2.fill" }} />
-        <Label>Leads</Label>
+      <NativeTabs.Trigger name="deals">
+        <Icon sf={{ default: "dollarsign.circle", selected: "dollarsign.circle.fill" }} />
+        <Label>Deals</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="contacts">
         <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />

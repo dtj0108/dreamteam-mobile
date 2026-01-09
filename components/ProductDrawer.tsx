@@ -1,5 +1,6 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter, usePathname } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
   Animated,
@@ -16,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Colors } from "@/constants/Colors";
 import { Product, PRODUCTS, useCurrentProduct } from "@/providers/product-provider";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.85;
@@ -28,7 +30,10 @@ interface ProductDrawerProps {
 export function ProductDrawer({ visible, onClose }: ProductDrawerProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const pathname = usePathname();
   const currentProduct = useCurrentProduct();
+  const isOnHub = pathname.startsWith("/hub");
+  const { currentWorkspace } = useWorkspace();
 
   // Animation values
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -73,9 +78,19 @@ export function ProductDrawer({ visible, onClose }: ProductDrawerProps) {
     onClose();
   };
 
+  const handleHub = () => {
+    router.push("/(main)/hub");
+    onClose();
+  };
+
   const handleSettings = () => {
     onClose();
     router.push("/(main)/more/settings");
+  };
+
+  const handleWorkspaces = () => {
+    onClose();
+    router.push("/(main)/more/workspaces");
   };
 
   const handleClose = () => {
@@ -149,17 +164,76 @@ export function ProductDrawer({ visible, onClose }: ProductDrawerProps) {
               </Pressable>
             </View>
 
+            {/* Hub Button */}
+            <Pressable
+              onPress={handleHub}
+              className={`mx-2 mb-3 flex-row items-center rounded-xl p-3 ${
+                isOnHub ? "bg-primary/10" : "active:bg-muted"
+              }`}
+            >
+              <View
+                className={`h-12 w-12 items-center justify-center rounded-xl ${
+                  isOnHub ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <Ionicons
+                  name="grid"
+                  size={24}
+                  color={isOnHub ? "#ffffff" : Colors.mutedForeground}
+                />
+              </View>
+              <View className="ml-3 flex-1">
+                <Text className="text-base font-semibold text-foreground">
+                  Hub
+                </Text>
+                <Text className="text-sm text-muted-foreground">
+                  All products
+                </Text>
+              </View>
+              {isOnHub && (
+                <FontAwesome name="check" size={16} color={Colors.primary} />
+              )}
+            </Pressable>
+
+            <View className="mx-4 mb-2 h-px bg-border" />
+
             {/* Product List */}
             <ScrollView className="flex-1 px-2">
               {PRODUCTS.map((product) => (
                 <ProductRow
                   key={product.id}
                   product={product}
-                  isSelected={currentProduct.id === product.id}
+                  isSelected={currentProduct?.id === product.id}
                   onSelect={() => handleSelectProduct(product)}
                 />
               ))}
             </ScrollView>
+
+            {/* Workspace Switcher */}
+            {currentWorkspace && (
+              <View className="border-t border-border px-2 pt-2">
+                <Pressable
+                  onPress={handleWorkspaces}
+                  className="flex-row items-center rounded-lg p-3 active:bg-muted"
+                >
+                  <View className="h-10 w-10 items-center justify-center rounded-lg bg-foreground">
+                    <Text className="text-lg font-bold text-white">
+                      {currentWorkspace.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View className="ml-3 flex-1">
+                    <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
+                      {currentWorkspace.name}
+                    </Text>
+                  </View>
+                  <FontAwesome
+                    name="chevron-right"
+                    size={14}
+                    color={Colors.mutedForeground}
+                  />
+                </Pressable>
+              </View>
+            )}
 
             {/* Bottom Actions */}
             <View className="border-t border-border px-2 pt-2">

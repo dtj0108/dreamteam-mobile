@@ -11,6 +11,9 @@ export function ProductSwitcher() {
   const currentProduct = useCurrentProduct();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  // Don't render if no product selected (e.g., on Hub screen)
+  if (!currentProduct) return null;
+
   return (
     <>
       <Pressable

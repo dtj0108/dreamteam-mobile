@@ -13,6 +13,40 @@ DreamTeam Mobile is the React Native/Expo companion app for the **dreamteam.ai**
 - Project management
 - Knowledge base/wiki
 
+## Safety & Boundaries
+
+Claude Code should NEVER:
+- Delete or modify files outside this project directory
+- Run commands that affect system-level settings or configurations
+- Execute `rm -rf` or similar destructive commands without explicit user confirmation
+- Access, read, or modify credentials, SSH keys, or sensitive files in `~/.ssh`, `~/.aws`, etc.
+- Make network requests to unknown/untrusted endpoints
+- Install global packages or modify system PATH
+- Push code to remote repositories without explicit permission
+- Run commands that could incur costs (cloud provisioning, paid APIs) without confirmation
+- Modify `.env` files without showing the changes first
+
+Claude Code SHOULD:
+- Stay within the project directory (`/Users/drewbaskin/dreamteam-mobile`)
+- Ask before any potentially destructive operation
+- Show file contents before major modifications
+- Use project-local dependencies (npm, not global installs)
+
+## Workflow Preferences
+
+**Plan Mode:**
+- Create a comprehensive, ordered to-do list
+- For longer/complex tasks, break them into logical phases or chunks
+- Each phase can have multiple sub-tasks
+- Keep tasks actionable and specific
+- It's okay to plan ambitious multi-phase work
+
+**Work Mode:**
+- Do NOT stop until ALL to-dos are completed
+- Do NOT pause between phases - work through everything continuously
+- Mark items complete as you go
+- Only pause to ask questions if truly blocked
+
 ### Product Architecture
 
 The platform is organized into **5 Products**, each essentially a full app:

@@ -23,18 +23,35 @@ export async function apiClient<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const {
+  // Get session and refresh if needed to ensure token is valid
+  let {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // If we have a session, try to refresh it to ensure token is fresh
+  if (session) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed.session) {
+      session = refreshed.session;
+    }
+  }
+
+  // Debug logging
+  console.log(`API Call to ${endpoint}:`, session ? "Has session (refreshed)" : "NO SESSION");
+  if (session) {
+    console.log("Token preview:", session.access_token?.substring(0, 20) + "...");
+  }
+
   // Get workspace ID from storage
   const workspaceId = await AsyncStorage.getItem(WORKSPACE_ID_KEY);
+  console.log("Workspace ID:", workspaceId);
 
   // Build URL with workspaceId query parameter
   const url = new URL(`${API_URL}${endpoint}`);
   if (workspaceId) {
     url.searchParams.append("workspaceId", workspaceId);
   }
+  console.log("Full URL:", url.toString());
 
   const response = await fetch(url.toString(), {
     ...options,

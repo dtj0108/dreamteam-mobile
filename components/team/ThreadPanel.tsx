@@ -18,7 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { useThread, useReplyToThread } from "@/lib/hooks/useTeam";
 import { Message } from "@/lib/types/team";
 import { MessageList } from "./MessageList";
@@ -117,14 +117,14 @@ export function ThreadPanel({
           <View className="border-b border-border px-4 py-3">
             <MessageItem
               message={parentMessage}
-              isOwn={parentMessage.user_id === user?.id}
+              isOwn={parentMessage.sender_id === user?.id}
               showAvatar={true}
               showTimestamp={true}
               isInThread={true}
               onPress={() => {}}
               onLongPress={() => {}}
               onThreadPress={() => {}}
-              onReactionPress={handleReactionPress}
+              onReactionPress={(emoji) => handleReactionPress(parentMessage, emoji)}
             />
           </View>
 

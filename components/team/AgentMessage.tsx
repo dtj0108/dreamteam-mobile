@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { AgentMessage as AgentMessageType } from "@/lib/types/team";
 import { ToolCallCard } from "./ToolCallCard";
 

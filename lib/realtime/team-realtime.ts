@@ -111,7 +111,7 @@ export function subscribeToDMMessages(
         event: "INSERT",
         schema: "public",
         table: "messages",
-        filter: `dm_id=eq.${dmId}`,
+        filter: `dm_conversation_id=eq.${dmId}`,
       },
       (payload) => {
         callbacks.onInsert?.(payload.new as Message);
@@ -123,7 +123,7 @@ export function subscribeToDMMessages(
         event: "UPDATE",
         schema: "public",
         table: "messages",
-        filter: `dm_id=eq.${dmId}`,
+        filter: `dm_conversation_id=eq.${dmId}`,
       },
       (payload) => {
         callbacks.onUpdate?.(payload.new as Message);
@@ -135,7 +135,7 @@ export function subscribeToDMMessages(
         event: "DELETE",
         schema: "public",
         table: "messages",
-        filter: `dm_id=eq.${dmId}`,
+        filter: `dm_conversation_id=eq.${dmId}`,
       },
       (payload) => {
         callbacks.onDelete?.((payload.old as { id: string }).id);
@@ -169,7 +169,7 @@ export function subscribeToThreadMessages(
         event: "INSERT",
         schema: "public",
         table: "messages",
-        filter: `thread_id=eq.${threadId}`,
+        filter: `parent_id=eq.${threadId}`,
       },
       (payload) => {
         callbacks.onInsert?.(payload.new as Message);
@@ -181,7 +181,7 @@ export function subscribeToThreadMessages(
         event: "UPDATE",
         schema: "public",
         table: "messages",
-        filter: `thread_id=eq.${threadId}`,
+        filter: `parent_id=eq.${threadId}`,
       },
       (payload) => {
         callbacks.onUpdate?.(payload.new as Message);
@@ -193,7 +193,7 @@ export function subscribeToThreadMessages(
         event: "DELETE",
         schema: "public",
         table: "messages",
-        filter: `thread_id=eq.${threadId}`,
+        filter: `parent_id=eq.${threadId}`,
       },
       (payload) => {
         callbacks.onDelete?.((payload.old as { id: string }).id);
@@ -355,7 +355,7 @@ export function subscribeToPresence(
       const onlineUsers = new Map<string, UserPresence>();
 
       Object.entries(state).forEach(([, presences]) => {
-        (presences as Array<{
+        (presences as unknown as Array<{
           user_id: string;
           status: PresenceStatus;
           status_message: string | null;

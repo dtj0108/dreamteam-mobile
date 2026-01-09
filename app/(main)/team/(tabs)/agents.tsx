@@ -9,7 +9,7 @@ import {
 import { FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import Colors from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { useAgents } from "@/lib/hooks/useTeam";
 import { Agent } from "@/lib/types/team";
 import { AgentCard } from "@/components/team/AgentCard";
@@ -66,7 +66,7 @@ export default function AgentsListScreen() {
         >
           {enabledAgents.length === 0 ? (
             <View className="flex-1 items-center justify-center py-12">
-              <FontAwesome name="robot" size={48} color="#d1d5db" />
+              <Text style={{ fontSize: 48 }}>✨</Text>
               <Text className="mt-4 text-lg font-medium text-foreground">
                 No agents available
               </Text>

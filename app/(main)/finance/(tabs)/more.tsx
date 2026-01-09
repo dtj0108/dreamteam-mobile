@@ -1,7 +1,9 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { ProductSwitcher } from "@/components/ProductSwitcher";
 import { Colors } from "@/constants/Colors";
 
 export default function MoreScreen() {
@@ -9,6 +11,12 @@ export default function MoreScreen() {
 
   return (
     <View className="flex-1 bg-background">
+      <SafeAreaView edges={["top"]} className="bg-background">
+        <View className="px-4 py-2">
+          <ProductSwitcher />
+        </View>
+      </SafeAreaView>
+
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View className="py-4">
@@ -25,21 +33,21 @@ export default function MoreScreen() {
             iconColor="#22c55e"
             title="Goals"
             subtitle="Track revenue, profit & exit planning"
-            onPress={() => {}}
+            onPress={() => router.push("/(main)/finance/goals")}
           />
           <MenuItem
             icon="repeat"
             iconColor="#8b5cf6"
             title="Subscriptions"
             subtitle="Manage recurring payments"
-            onPress={() => {}}
+            onPress={() => router.push("/(main)/finance/subscriptions")}
           />
           <MenuItem
             icon="bar-chart"
             iconColor="#0ea5e9"
             title="Analytics"
             subtitle="Reports & financial insights"
-            onPress={() => {}}
+            onPress={() => router.push("/(main)/finance/analytics")}
           />
           <MenuItem
             icon="dashboard"
