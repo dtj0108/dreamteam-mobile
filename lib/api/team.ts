@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system/legacy";
+import { decode } from "base64-arraybuffer";
 
 import { supabase } from "../supabase";
 import { del, get, post, put } from "../api";
@@ -50,6 +52,42 @@ async function getCurrentUserId(): Promise<string> {
     throw new Error("Not authenticated");
   }
   return user.id;
+}
+
+// Helper to determine attachment type from mime type
+function getAttachmentTypeFromMime(mimeType: string | null): "image" | "document" | "video" | "audio" | "file" {
+  if (!mimeType) return "file";
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  if (mimeType === "application/pdf") return "document";
+  return "file";
+}
+
+// Helper to transform message_attachments from DB to Attachment interface
+function transformMessageAttachments(message: any): Message {
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+
+  const attachments = (message.message_attachments || []).map((att: any) => {
+    // Construct public URL from storage_path (bucket is now public)
+    let url = att.file_url || "";
+    if (att.storage_path && supabaseUrl) {
+      url = `${supabaseUrl}/storage/v1/object/public/workspace-files/${att.storage_path}`;
+    }
+
+    return {
+      id: att.id,
+      type: getAttachmentTypeFromMime(att.file_type),
+      url,
+      name: att.file_name,
+      size: att.file_size || 0,
+      mime_type: att.file_type || "",
+    };
+  });
+
+  // Remove message_attachments and add attachments
+  const { message_attachments, ...rest } = message;
+  return { ...rest, attachments };
 }
 
 // ============================================================================
@@ -489,7 +527,67 @@ export async function getChannelMessages(
   channelId: string,
   params?: MessagesQueryParams
 ): Promise<MessagesResponse> {
-  console.log("[Team API] getChannelMessages via Supabase", channelId, params);
+  console.log("[Team API] getChannelMessages via Web API", channelId, params);
+  
+  // Use the web API endpoint which returns messages with fresh signed URLs
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  
+  if (API_URL) {
+    try {
+      // Get session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      const workspaceId = await getWorkspaceId();
+      
+      // Build query params
+      const queryParams = new URLSearchParams();
+      if (workspaceId) queryParams.append("workspaceId", workspaceId);
+      if (params?.limit) queryParams.append("limit", params.limit.toString());
+      if (params?.before) queryParams.append("before", params.before);
+      if (params?.after) queryParams.append("after", params.after);
+      
+      const url = `${API_URL}/api/team/channels/${channelId}/messages?${queryParams.toString()}`;
+      console.log("[Team API] Fetching channel messages from web API:", url);
+      
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: session ? `Bearer ${session.access_token}` : "",
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[Team API] getChannelMessages via Web API response:", data.messages?.length, "messages");
+        
+        // Transform the response to match our expected format
+        const messages = (data.messages || []).map((msg: any) => ({
+          ...msg,
+          attachments: (msg.attachments || []).map((att: any) => ({
+            id: att.id,
+            type: getAttachmentTypeFromMime(att.mimeType || att.mime_type || ""),
+            url: att.url || att.fileUrl,
+            name: att.name || att.fileName,
+            size: att.size || att.fileSize || 0,
+            mime_type: att.mimeType || att.mime_type || "",
+            thumbnail: att.thumbnail,
+          })),
+        }));
+        
+        return {
+          messages,
+          has_more: data.hasMore || data.has_more || false,
+          next_cursor: data.nextCursor || data.next_cursor,
+        };
+      } else {
+        console.log("[Team API] Web API failed for channel messages, status:", response.status);
+      }
+    } catch (apiError) {
+      console.log("[Team API] Web API error for channel messages:", apiError);
+    }
+  }
+  
+  // Fallback to direct Supabase query (URLs may be expired)
+  console.log("[Team API] getChannelMessages via Supabase (fallback)", channelId, params);
   try {
     const limit = params?.limit || 50;
 
@@ -497,7 +595,8 @@ export async function getChannelMessages(
       .from("messages")
       .select(`
         *,
-        sender:profiles!sender_id(*)
+        sender:profiles!sender_id(*),
+        message_attachments(*)
       `)
       .eq("channel_id", channelId)
       .is("parent_id", null) // Only get top-level messages, not thread replies
@@ -519,16 +618,19 @@ export async function getChannelMessages(
     const has_more = messages.length > limit;
     const resultMessages = has_more ? messages.slice(0, limit) : messages;
 
+    // Transform to map message_attachments to attachments
+    const transformedMessages = resultMessages.map(transformMessageAttachments);
+
     // Reverse to get chronological order (oldest first for display)
-    resultMessages.reverse();
+    transformedMessages.reverse();
 
     // After reverse, first message is oldest - use its timestamp as cursor for next page
-    const next_cursor = has_more && resultMessages.length > 0
-      ? resultMessages[0].created_at
+    const next_cursor = has_more && transformedMessages.length > 0
+      ? transformedMessages[0].created_at
       : undefined;
 
-    console.log("[Team API] getChannelMessages response:", resultMessages.length, "messages, has_more:", has_more);
-    return { messages: resultMessages as Message[], has_more, next_cursor };
+    console.log("[Team API] getChannelMessages response:", transformedMessages.length, "messages, has_more:", has_more);
+    return { messages: transformedMessages, has_more, next_cursor };
   } catch (error) {
     console.error("[Team API] getChannelMessages ERROR:", error);
     throw error;
@@ -544,6 +646,7 @@ export async function sendChannelMessage(
     const userId = await getCurrentUserId();
     const workspaceId = await getWorkspaceId();
 
+    // Insert message (without attachments column - that's a separate table)
     const { data: message, error } = await supabase
       .from("messages")
       .insert({
@@ -556,6 +659,26 @@ export async function sendChannelMessage(
       .single();
 
     if (error) throw error;
+
+    // Insert attachments into message_attachments table
+    if (data.attachments && data.attachments.length > 0) {
+      const attachmentRows = data.attachments.map((att) => ({
+        message_id: message.id,
+        file_url: att.url,
+        file_name: att.name,
+        file_type: att.type === "image" ? "image/jpeg" : "application/octet-stream",
+        file_size: att.size,
+        storage_path: att.url.split("/workspace-files/")[1] || null,
+      }));
+
+      const { error: attachError } = await supabase
+        .from("message_attachments")
+        .insert(attachmentRows);
+
+      if (attachError) {
+        console.error("[Team API] Failed to insert attachments:", attachError);
+      }
+    }
 
     console.log("[Team API] sendChannelMessage response:", message);
     return message as Message;
@@ -570,14 +693,15 @@ export async function getMessage(id: string): Promise<Message> {
   try {
     const { data: message, error } = await supabase
       .from("messages")
-      .select(`*, sender:profiles(*)`)
+      .select(`*, sender:profiles(*), message_attachments(*)`)
       .eq("id", id)
       .single();
 
     if (error) throw error;
 
-    console.log("[Team API] getMessage response:", message);
-    return message as Message;
+    const transformedMessage = transformMessageAttachments(message);
+    console.log("[Team API] getMessage response:", transformedMessage);
+    return transformedMessage;
   } catch (error) {
     console.error("[Team API] getMessage ERROR:", error);
     throw error;
@@ -674,7 +798,7 @@ export async function getThread(
     // Get the parent message
     const { data: parentMessage, error: parentError } = await supabase
       .from("messages")
-      .select(`*, sender:profiles(*)`)
+      .select(`*, sender:profiles(*), message_attachments(*)`)
       .eq("id", messageId)
       .single();
 
@@ -683,16 +807,20 @@ export async function getThread(
     // Get replies (messages with this parent_id)
     const { data: replies, error: repliesError } = await supabase
       .from("messages")
-      .select(`*, sender:profiles(*)`)
+      .select(`*, sender:profiles(*), message_attachments(*)`)
       .eq("parent_id", messageId)
       .order("created_at", { ascending: true })
       .limit(limit);
 
     if (repliesError) throw repliesError;
 
+    // Transform message attachments
+    const transformedParent = transformMessageAttachments(parentMessage);
+    const transformedReplies = (replies || []).map(transformMessageAttachments);
+
     const result: ThreadResponse = {
-      parent_message: parentMessage as Message,
-      replies: (replies || []) as Message[],
+      parent_message: transformedParent,
+      replies: transformedReplies,
       has_more: (replies || []).length >= limit,
     };
 
@@ -1165,7 +1293,73 @@ export async function getDMMessages(
   dmId: string,
   params?: MessagesQueryParams
 ): Promise<MessagesResponse> {
-  console.log("[Team API] getDMMessages via Supabase", dmId, params);
+  console.log("[Team API] getDMMessages via Web API", dmId, params);
+  
+  // Use the web API endpoint which returns messages with fresh signed URLs
+  // The web API has service role permissions to create signed URLs
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  
+  if (API_URL) {
+    try {
+      // Get session for auth header
+      const { data: { session } } = await supabase.auth.getSession();
+      const workspaceId = await getWorkspaceId();
+      
+      // Build query params
+      const queryParams = new URLSearchParams();
+      if (workspaceId) queryParams.append("workspaceId", workspaceId);
+      if (params?.limit) queryParams.append("limit", params.limit.toString());
+      if (params?.before) queryParams.append("before", params.before);
+      if (params?.after) queryParams.append("after", params.after);
+      
+      const url = `${API_URL}/api/team/dms/${dmId}/messages?${queryParams.toString()}`;
+      console.log("[Team API] Fetching from web API:", url);
+      
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: session ? `Bearer ${session.access_token}` : "",
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[Team API] getDMMessages via Web API response:", data.messages?.length, "messages");
+        
+        // Transform the response to match our expected format
+        // The web API returns messages with attachments that have fresh signed URLs
+        const messages = (data.messages || []).map((msg: any) => ({
+          ...msg,
+          attachments: (msg.attachments || []).map((att: any) => ({
+            id: att.id,
+            type: getAttachmentTypeFromMime(att.mimeType || att.mime_type || ""),
+            url: att.url || att.fileUrl,
+            name: att.name || att.fileName,
+            size: att.size || att.fileSize || 0,
+            mime_type: att.mimeType || att.mime_type || "",
+            thumbnail: att.thumbnail,
+          })),
+        }));
+        
+        // #region agent log
+        console.log("[Team API] First message attachments:", messages[0]?.attachments);
+        // #endregion
+        
+        return {
+          messages,
+          has_more: data.hasMore || data.has_more || false,
+          next_cursor: data.nextCursor || data.next_cursor,
+        };
+      } else {
+        console.log("[Team API] Web API failed, status:", response.status, "falling back to Supabase");
+      }
+    } catch (apiError) {
+      console.log("[Team API] Web API error, falling back to Supabase:", apiError);
+    }
+  }
+  
+  // Fallback to direct Supabase query (URLs may be expired)
+  console.log("[Team API] getDMMessages via Supabase (fallback)", dmId, params);
   try {
     const limit = params?.limit || 50;
 
@@ -1173,7 +1367,8 @@ export async function getDMMessages(
       .from("messages")
       .select(`
         *,
-        sender:profiles!sender_id(*)
+        sender:profiles!sender_id(*),
+        message_attachments(*)
       `)
       .eq("dm_conversation_id", dmId)
       .order("created_at", { ascending: false })
@@ -1194,16 +1389,19 @@ export async function getDMMessages(
     const has_more = messages.length > limit;
     const resultMessages = has_more ? messages.slice(0, limit) : messages;
 
+    // Transform to map message_attachments to attachments
+    const transformedMessages = resultMessages.map(transformMessageAttachments);
+
     // Reverse to get chronological order
-    resultMessages.reverse();
+    transformedMessages.reverse();
 
     // After reverse, first message is oldest - use its timestamp as cursor for next page
-    const next_cursor = has_more && resultMessages.length > 0
-      ? resultMessages[0].created_at
+    const next_cursor = has_more && transformedMessages.length > 0
+      ? transformedMessages[0].created_at
       : undefined;
 
-    console.log("[Team API] getDMMessages response:", resultMessages.length, "messages, has_more:", has_more);
-    return { messages: resultMessages as Message[], has_more, next_cursor };
+    console.log("[Team API] getDMMessages response:", transformedMessages.length, "messages, has_more:", has_more);
+    return { messages: transformedMessages, has_more, next_cursor };
   } catch (error) {
     console.error("[Team API] getDMMessages ERROR:", error);
     throw error;
@@ -1219,6 +1417,7 @@ export async function sendDMMessage(
     const userId = await getCurrentUserId();
     const workspaceId = await getWorkspaceId();
 
+    // Insert message (without attachments column - that's a separate table)
     const { data: message, error } = await supabase
       .from("messages")
       .insert({
@@ -1231,6 +1430,26 @@ export async function sendDMMessage(
       .single();
 
     if (error) throw error;
+
+    // Insert attachments into message_attachments table
+    if (data.attachments && data.attachments.length > 0) {
+      const attachmentRows = data.attachments.map((att) => ({
+        message_id: message.id,
+        file_url: att.url,
+        file_name: att.name,
+        file_type: att.type === "image" ? "image/jpeg" : "application/octet-stream",
+        file_size: att.size,
+        storage_path: att.url.split("/workspace-files/")[1] || null,
+      }));
+
+      const { error: attachError } = await supabase
+        .from("message_attachments")
+        .insert(attachmentRows);
+
+      if (attachError) {
+        console.error("[Team API] Failed to insert attachments:", attachError);
+      }
+    }
 
     // Update last_message_at on the conversation
     await supabase
@@ -1653,28 +1872,52 @@ export async function getWorkspaceMembers(): Promise<WorkspaceMembersResponse> {
 // ============================================================================
 
 export async function uploadAttachment(
-  file: FormData
+  uri: string,
+  fileName: string,
+  mimeType: string
 ): Promise<UploadResponse> {
-  const { supabase } = await import("../supabase");
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  console.log("[Team API] uploadAttachment:", { uri: uri.substring(0, 50), fileName, mimeType });
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL!;
+  const workspaceId = await getWorkspaceId();
+  const userId = await getCurrentUserId();
 
-  const response = await fetch(`${API_URL}/api/uploads`, {
-    method: "POST",
-    headers: {
-      Authorization: session ? `Bearer ${session.access_token}` : "",
-      // Don't set Content-Type - let browser set it with boundary for multipart
-    },
-    body: file,
+  // Read file as base64
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: "base64",
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || "Upload failed");
+  // Convert to ArrayBuffer
+  const buffer = decode(base64);
+
+  // Generate unique storage path
+  const ext = fileName.split(".").pop() || "file";
+  const storagePath = `${workspaceId}/${userId}/${Date.now()}.${ext}`;
+
+  console.log("[Team API] uploading to Supabase Storage:", storagePath);
+
+  // Upload to Supabase Storage
+  const { data, error } = await supabase.storage
+    .from("workspace-files")
+    .upload(storagePath, buffer, { contentType: mimeType });
+
+  if (error) {
+    console.error("[Team API] uploadAttachment error:", error);
+    throw error;
   }
 
-  return response.json();
+  console.log("[Team API] uploadAttachment success:", data);
+
+  // Get public URL (bucket is public)
+  const { data: urlData } = supabase.storage
+    .from("workspace-files")
+    .getPublicUrl(storagePath);
+
+  return {
+    id: data.id || storagePath,
+    url: urlData.publicUrl,
+    type: getAttachmentTypeFromMime(mimeType),
+    name: fileName,
+    size: buffer.byteLength,
+    mime_type: mimeType,
+  };
 }

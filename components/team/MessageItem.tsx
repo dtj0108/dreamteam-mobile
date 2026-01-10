@@ -1,10 +1,12 @@
-import { memo, useMemo } from "react";
+import { memo, useState } from "react";
 import { View, Text, Pressable, Image, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Colors } from "@/constants/Colors";
-import { Message, formatMessageTimestamp } from "@/lib/types/team";
+import { Message, formatMessageTimestamp, Attachment } from "@/lib/types/team";
 import { ReactionBar } from "./ReactionBar";
+import { PDFViewer } from "./PDFViewer";
+import { ImageViewer } from "./ImageViewer";
 
 // Simple markdown parser for message content
 function parseMarkdown(text: string): React.ReactNode[] {
@@ -21,13 +23,23 @@ function parseMarkdown(text: string): React.ReactNode[] {
     { regex: /~~(.+?)~~/g, style: styles.strikethrough },     // ~~strikethrough~~
   ];
 
-  // Combined regex to find any markdown
-  const combinedRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_|`[^`]+`|~~[^~]+~~)/g;
+  // Combined regex to find any markdown or @mentions
+  const combinedRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_|`[^`]+`|~~[^~]+~~|@\w+)/g;
 
   const matches = text.split(combinedRegex);
 
   for (const part of matches) {
     if (!part) continue;
+
+    // Check for @mention first
+    if (part.startsWith("@") && /^@\w+$/.test(part)) {
+      parts.push(
+        <Text key={key++} style={styles.mention}>
+          {part}
+        </Text>
+      );
+      continue;
+    }
 
     let matched = false;
     for (const { regex, style } of patterns) {
@@ -62,6 +74,13 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   strikethrough: { textDecorationLine: "line-through" },
+  mention: {
+    backgroundColor: "rgba(14, 165, 233, 0.15)",
+    color: "#0284c7",
+    fontWeight: "500",
+    borderRadius: 4,
+    paddingHorizontal: 2,
+  },
 });
 
 interface MessageItemProps {
@@ -89,12 +108,28 @@ function MessageItemComponent({
   onThreadPress,
   onReactionPress,
 }: MessageItemProps) {
+  // State for PDF and image viewers
+  const [selectedPdf, setSelectedPdf] = useState<Attachment | null>(null);
+  const [selectedImage, setSelectedImage] = useState<Attachment | null>(null);
+
   const hasReactions = message.reactions && message.reactions.length > 0;
   const hasThread = message.reply_count > 0 && !isInThread;
   const hasAttachments = message.attachments && message.attachments.length > 0;
   const isEdited = message.is_edited;
   const isPinned = message.is_pinned;
   const isSystem = message.type === "system";
+
+  const handlePdfPress = (attachment: Attachment) => {
+    setSelectedPdf(attachment);
+  };
+
+  const handleClosePdf = () => {
+    setSelectedPdf(null);
+  };
+
+  const isPdf = (attachment: Attachment) =>
+    attachment.mime_type === "application/pdf" ||
+    attachment.name?.toLowerCase().endsWith(".pdf");
 
   // System messages render differently
   if (isSystem) {
@@ -172,12 +207,37 @@ function MessageItemComponent({
                 className="mb-2 overflow-hidden rounded-lg"
               >
                 {attachment.type === "image" ? (
-                  <Pressable>
+                  <Pressable onPress={() => setSelectedImage(attachment)}>
                     <Image
                       source={{ uri: attachment.thumbnail || attachment.url }}
-                      className="h-48 w-full rounded-lg"
+                      style={{ height: 192, width: '100%', borderRadius: 8 }}
                       resizeMode="cover"
                     />
+                  </Pressable>
+                ) : isPdf(attachment) ? (
+                  <Pressable
+                    className="flex-row items-center rounded-lg bg-muted p-3"
+                    onPress={() => handlePdfPress(attachment)}
+                  >
+                    <Ionicons
+                      name="document-text"
+                      size={20}
+                      color={Colors.primary}
+                    />
+                    <View className="ml-3 flex-1">
+                      <Text
+                        className="font-medium text-foreground"
+                        numberOfLines={1}
+                      >
+                        {attachment.name}
+                      </Text>
+                      <Text className="text-xs text-muted-foreground">
+                        {formatFileSize(attachment.size)} • PDF
+                      </Text>
+                    </View>
+                    <View className="rounded bg-primary/10 px-2 py-1">
+                      <Text className="text-xs font-medium text-primary">View</Text>
+                    </View>
                   </Pressable>
                 ) : (
                   <View className="flex-row items-center rounded-lg bg-muted p-3">
@@ -207,6 +267,25 @@ function MessageItemComponent({
               </View>
             ))}
           </View>
+        )}
+
+        {/* PDF Viewer Modal */}
+        {selectedPdf && (
+          <PDFViewer
+            url={selectedPdf.url}
+            filename={selectedPdf.name}
+            visible={true}
+            onClose={handleClosePdf}
+          />
+        )}
+
+        {/* Image Viewer Modal */}
+        {selectedImage && (
+          <ImageViewer
+            url={selectedImage.url}
+            visible={true}
+            onClose={() => setSelectedImage(null)}
+          />
         )}
 
         {/* Reactions */}
