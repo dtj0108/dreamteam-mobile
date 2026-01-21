@@ -66,7 +66,7 @@ export default function GlobalMilestonesScreen() {
   const handleMilestonePress = (milestone: Milestone) => {
     if (milestone.project) {
       router.push({
-        pathname: "/(main)/projects/(tabs)/(home)/[id]/milestones",
+        pathname: "/(main)/projects/[id]/milestones",
         params: { id: milestone.project_id },
       });
     }

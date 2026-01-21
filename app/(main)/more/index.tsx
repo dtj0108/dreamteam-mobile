@@ -45,12 +45,6 @@ export default function MoreScreen() {
         description="Documents and wiki"
       />
       <MenuItem
-        href="/(main)/more/ai"
-        emoji="✨"
-        title="AI Chat"
-        description="Talk to AI agents"
-      />
-      <MenuItem
         href="/(main)/more/settings"
         icon="cog"
         title="Settings"
@@ -59,4 +53,5 @@ export default function MoreScreen() {
     </View>
   );
 }
+
 

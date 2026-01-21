@@ -9,6 +9,15 @@ export default function TeamLayout() {
       <Stack.Screen name="dm/[id]" />
       <Stack.Screen name="agents/[id]" />
       <Stack.Screen name="messages" />
+      <Stack.Screen
+        name="meeting/[id]"
+        options={{
+          presentation: "fullScreenModal",
+          headerShown: false,
+          gestureEnabled: false,
+        }}
+      />
     </Stack>
   );
 }
+

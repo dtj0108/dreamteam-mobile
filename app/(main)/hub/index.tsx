@@ -10,11 +10,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_GAP = 16;
 const HORIZONTAL_PADDING = 20;
 const CARD_WIDTH = (SCREEN_WIDTH - HORIZONTAL_PADDING * 2 - CARD_GAP) / 2;
-const FULL_WIDTH = SCREEN_WIDTH - HORIZONTAL_PADDING * 2;
-
-// Bento layout: first 4 products in 2x2 grid, last product (Knowledge) full-width
-const gridProducts = PRODUCTS.slice(0, 4);
-const fullWidthProduct = PRODUCTS[4]; // Knowledge
 
 export default function HubScreen() {
   const router = useRouter();
@@ -40,7 +35,7 @@ export default function HubScreen() {
       >
         <HubHeader />
 
-        {/* 2x2 Grid */}
+        {/* 3x2 Grid of all products */}
         <View
           className="flex-row flex-wrap"
           style={{
@@ -48,7 +43,7 @@ export default function HubScreen() {
             gap: CARD_GAP,
           }}
         >
-          {gridProducts.map((product, index) => (
+          {PRODUCTS.filter((p) => p.id !== "hub").map((product, index) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -60,24 +55,6 @@ export default function HubScreen() {
           ))}
         </View>
 
-        {/* Full-width Knowledge card */}
-        {fullWidthProduct && (
-          <View
-            style={{
-              paddingHorizontal: HORIZONTAL_PADDING,
-              marginTop: CARD_GAP,
-            }}
-          >
-            <ProductCard
-              product={fullWidthProduct}
-              index={4}
-              cardWidth={FULL_WIDTH}
-              isFullWidth
-              onPress={() => handleProductPress(fullWidthProduct.route)}
-              animationDelay={0}
-            />
-          </View>
-        )}
       </ScrollView>
     </View>
   );

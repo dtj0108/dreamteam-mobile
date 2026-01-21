@@ -23,9 +23,12 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ai.dreamteam.app",
-      "buildNumber": "6",
+      "buildNumber": "14",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "DreamTeam needs access to your camera for video calls (huddles)",
+        "NSMicrophoneUsageDescription": "DreamTeam needs access to your microphone for voice and video calls (huddles)",
+        "UIBackgroundModes": ["audio", "voip", "remote-notification"]
       }
     },
     "android": {
@@ -54,7 +57,15 @@
         }
       ],
       "expo-mail-composer",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "DreamTeam needs access to your camera for video calls",
+          "microphonePermission": "DreamTeam needs access to your microphone for audio calls",
+          "recordAudioAndroid": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

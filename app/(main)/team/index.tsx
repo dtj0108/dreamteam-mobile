@@ -4,3 +4,4 @@ export default function TeamIndex() {
   return <Redirect href="/(main)/team/(tabs)" />;
 }
 
+

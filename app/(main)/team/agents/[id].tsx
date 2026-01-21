@@ -16,8 +16,8 @@ import { useNavigation } from "@react-navigation/native";
 
 import { Colors } from "@/constants/Colors";
 import { useAgent } from "@/lib/hooks/useTeam";
-import { useAgentChat } from "@/lib/hooks/useAgentChat";
-import { AgentMessage as AgentMessageType } from "@/lib/types/team";
+import { useAgentChat, ChatMessage } from "@/lib/hooks/useAgentChat";
+import { useWorkspace } from "@/providers/workspace-provider";
 import { MessageInput } from "@/components/team/MessageInput";
 import { AgentMessage } from "@/components/team/AgentMessage";
 
@@ -27,6 +27,9 @@ export default function AgentChatScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
+
+  const { currentWorkspace } = useWorkspace();
+  const workspaceId = currentWorkspace?.id || "";
 
   // Hide parent header
   useLayoutEffect(() => {
@@ -44,10 +47,11 @@ export default function AgentChatScreen() {
     messages,
     isStreaming,
     sendMessage,
-    startNewConversation,
+    clearMessages,
     error,
   } = useAgentChat({
-    agentId: id,
+    agentId: id || "",
+    workspaceId,
     onError: (err) => {
       Alert.alert("Error", err.message);
     },
@@ -81,18 +85,35 @@ export default function AgentChatScreen() {
         { text: "Cancel", style: "cancel" },
         {
           text: "Start New",
-          onPress: startNewConversation,
+          onPress: clearMessages,
         },
       ]
     );
-  }, [startNewConversation]);
+  }, [clearMessages]);
 
   const renderMessage = useCallback(
-    ({ item, index }: { item: AgentMessageType; index: number }) => {
+    ({ item, index }: { item: ChatMessage; index: number }) => {
       const isLastMessage = index === messages.length - 1;
+      // Convert ChatMessage to the format AgentMessage expects
+      const toolCallParts = item.parts.filter((p) => p.type === "tool-call");
+      const legacyMessage = {
+        role: item.role as "user" | "assistant",
+        content: item.content,
+        created_at: item.createdAt.toISOString(),
+        tool_calls: toolCallParts.map((p) => {
+          const tc = p as { type: "tool-call"; toolCallId: string; toolName: string; args: unknown };
+          return { id: tc.toolCallId, name: tc.toolName, args: (tc.args as object) || {} };
+        }),
+        tool_results: toolCallParts
+          .filter((p) => "result" in p && p.result !== undefined)
+          .map((p) => {
+            const tc = p as { type: "tool-call"; toolCallId: string; toolName: string; result?: unknown };
+            return { tool_call_id: tc.toolCallId, name: tc.toolName, result: tc.result };
+          }),
+      };
       return (
         <AgentMessage
-          message={item}
+          message={legacyMessage}
           agentName={agent?.name || "Assistant"}
           agentEmoji={agent?.emoji || "🤖"}
           isStreaming={isLastMessage && isStreaming && item.role === "assistant"}
@@ -202,11 +223,11 @@ export default function AgentChatScreen() {
             )}
           </View>
         ) : (
-          <FlatList
+          <FlatList<ChatMessage>
             ref={flatListRef}
             data={messages}
             renderItem={renderMessage}
-            keyExtractor={(item, index) => `${item.role}-${index}`}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={{
               paddingHorizontal: 16,
               paddingVertical: 16,

@@ -22,6 +22,7 @@ interface ProjectFABMenuProps {
   onCreateProject?: () => void;
   onCreateTask?: () => void;
   onCreateMilestone?: () => void;
+  onOpenSettings?: () => void;
 }
 
 interface MenuItemProps {
@@ -52,6 +53,7 @@ export function ProjectFABMenu({
   onCreateProject,
   onCreateTask,
   onCreateMilestone,
+  onOpenSettings,
 }: ProjectFABMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -155,6 +157,16 @@ export function ProjectFABMenu({
       title: "Milestone",
       subtitle: "Set a project milestone",
       onPress: () => handleMenuItem(onCreateMilestone),
+    });
+  }
+
+  if (onOpenSettings) {
+    menuItems.push({
+      key: "settings",
+      icon: <FontAwesome name="cog" size={22} color="#64748b" />,
+      title: "Settings",
+      subtitle: "Project settings",
+      onPress: () => handleMenuItem(onOpenSettings),
     });
   }
 

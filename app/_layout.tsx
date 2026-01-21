@@ -1,3 +1,7 @@
+// Setup streaming polyfills before any other imports
+import { setupPolyfills } from "@/lib/polyfills";
+setupPolyfills();
+
 import "../global.css";
 
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -13,13 +17,19 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AnimatedSplash } from "@/components/hub/AnimatedSplash";
+import { PushPermissionModal } from "@/components/notifications/PushPermissionModal";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/components/useColorScheme";
 import { AuthProvider, useAuth } from "@/providers/auth-provider";
 import { WorkspaceProvider } from "@/providers/workspace-provider";
 import { TeamProvider } from "@/providers/team-provider";
-// import { NotificationProvider } from "@/providers/notification-provider"; // TODO: Enable after configuring push in Apple Developer
+import { AgentsProvider } from "@/providers/agents-provider";
+import { MeetingProvider } from "@/providers/meeting-provider";
+import {
+  NotificationProvider,
+  useNotifications,
+} from "@/providers/notification-provider";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -38,6 +48,47 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Component to handle push notification permission prompt
+// Must be rendered inside NotificationProvider
+function PushPermissionPrompt({
+  isReady,
+  isAuthenticated,
+}: {
+  isReady: boolean;
+  isAuthenticated: boolean;
+}) {
+  const { expoPushToken, requestPermissions } = useNotifications();
+  const [showModal, setShowModal] = useState(false);
+
+  // Show modal when ready, authenticated, and no push token
+  useEffect(() => {
+    if (isReady && isAuthenticated && !expoPushToken) {
+      // Small delay to ensure smooth transition after splash
+      const timer = setTimeout(() => {
+        setShowModal(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isReady, isAuthenticated, expoPushToken]);
+
+  const handleEnable = async () => {
+    await requestPermissions();
+    setShowModal(false);
+  };
+
+  const handleDismiss = () => {
+    setShowModal(false);
+  };
+
+  return (
+    <PushPermissionModal
+      visible={showModal}
+      onEnable={handleEnable}
+      onDismiss={handleDismiss}
+    />
+  );
+}
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -89,8 +140,8 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === "(auth)";
 
     if (!session && !inAuthGroup) {
-      // Redirect to login if not authenticated
-      router.replace("/(auth)/login");
+      // Redirect to welcome if not authenticated
+      router.replace("/(auth)/welcome");
     } else if (session && inAuthGroup) {
       // Redirect to main app if authenticated
       router.replace("/(main)/hub");
@@ -101,16 +152,27 @@ function RootLayoutNav() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <WorkspaceProvider>
-          {/* TODO: Re-enable NotificationProvider after configuring push in Apple Developer */}
-          <TeamProvider>
-            {/* Always render Slot - screens pre-mount behind splash */}
-            <Slot />
+          <AgentsProvider>
+            <NotificationProvider>
+              <TeamProvider>
+              <MeetingProvider>
+                {/* Always render Slot - screens pre-mount behind splash */}
+                <Slot />
 
-            {/* Animated splash overlay until ready */}
-            {!isReady && (
-              <AnimatedSplash onComplete={() => setSplashComplete(true)} />
-            )}
-          </TeamProvider>
+                {/* Animated splash overlay until ready */}
+                {!isReady && (
+                  <AnimatedSplash onComplete={() => setSplashComplete(true)} />
+                )}
+
+                {/* Push notification permission prompt */}
+                <PushPermissionPrompt
+                  isReady={isReady}
+                  isAuthenticated={!!session}
+                />
+              </MeetingProvider>
+              </TeamProvider>
+            </NotificationProvider>
+          </AgentsProvider>
         </WorkspaceProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

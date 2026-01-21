@@ -13,12 +13,12 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   useProject,
   useProjectActivity,
-} from "../../../../../../lib/hooks/useProjects";
+} from "../../../../lib/hooks/useProjects";
 import {
   getActivityActionLabel,
   getActivityActionIcon,
   ProjectActivity,
-} from "../../../../../../lib/types/projects";
+} from "../../../../lib/types/projects";
 
 export default function ProjectActivityScreen() {
   const router = useRouter();

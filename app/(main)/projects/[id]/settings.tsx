@@ -21,7 +21,7 @@ import {
   useProjectLabels,
   useCreateProjectLabel,
   useDeleteProjectLabel,
-} from "../../../../../../lib/hooks/useProjects";
+} from "../../../../lib/hooks/useProjects";
 import {
   ProjectStatus,
   ProjectPriority,
@@ -31,7 +31,7 @@ import {
   getProjectPriorityLabel,
   getMemberRoleLabel,
   LABEL_COLORS,
-} from "../../../../../../lib/types/projects";
+} from "../../../../lib/types/projects";
 
 const STATUS_OPTIONS: ProjectStatus[] = ["active", "on_hold", "completed", "archived"];
 const PRIORITY_OPTIONS: ProjectPriority[] = ["low", "medium", "high", "critical"];

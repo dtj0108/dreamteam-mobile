@@ -1341,9 +1341,6 @@ export async function getDMMessages(
           })),
         }));
         
-        // #region agent log
-        console.log("[Team API] First message attachments:", messages[0]?.attachments);
-        // #endregion
         
         return {
           messages,
@@ -1781,29 +1778,6 @@ export async function getAgentConversation(
     console.error("[Team API] getAgentConversation ERROR:", error);
     throw error;
   }
-}
-
-// For SSE streaming, we need a special function that returns the response directly
-export async function chatWithAgentStream(
-  agentId: string,
-  message: string,
-  conversationId?: string
-): Promise<Response> {
-  const { supabase } = await import("../supabase");
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const API_URL = process.env.EXPO_PUBLIC_API_URL!;
-
-  return fetch(`${API_URL}/api/agents/${agentId}/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: session ? `Bearer ${session.access_token}` : "",
-    },
-    body: JSON.stringify({ message, conversationId }),
-  });
 }
 
 // ============================================================================

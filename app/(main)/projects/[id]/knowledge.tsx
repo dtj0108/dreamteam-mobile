@@ -18,8 +18,8 @@ import {
   useProjectKnowledgeLinks,
   useUnlinkKnowledgePage,
   useLinkKnowledgePage,
-} from "../../../../../../lib/hooks/useProjects";
-import { usePages } from "../../../../../../lib/hooks/useKnowledge";
+} from "../../../../lib/hooks/useProjects";
+import { usePages } from "../../../../lib/hooks/useKnowledge";
 
 export default function ProjectKnowledgeScreen() {
   const router = useRouter();

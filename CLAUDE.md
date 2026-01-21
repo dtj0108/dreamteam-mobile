@@ -176,6 +176,52 @@ Uses NativeWind with custom theme. See `STYLE.md` for full reference.
 - Logo: "dreamteam" (black) + ".ai" (primary blue)
 - Product icons: Emojis (💰 🤝 💬 📋 📖)
 
+## OTA Updates (EAS Update)
+
+Push JavaScript updates to users without going through the App Store.
+
+### Quick Command
+
+```bash
+# For TestFlight/App Store users (production channel)
+CI=1 npx eas-cli update --channel production --message "Your update message" --platform ios
+
+# For internal preview builds
+CI=1 npx eas-cli update --channel preview --message "Your update message" --platform ios
+
+# Android
+CI=1 npx eas-cli update --channel production --message "Your update message" --platform android
+```
+
+### Channels
+
+| Channel | Build Profile | Who Gets It |
+|---------|--------------|-------------|
+| `production` | production | App Store / TestFlight users |
+| `preview` | preview | Internal testers (ad-hoc distribution) |
+| `development` | development | Dev client users |
+
+### Important Notes
+
+1. **Match channel to build**: Updates only work when the channel matches the build's channel. TestFlight builds use `production` channel.
+
+2. **Fingerprint compatibility**: If you see "No compatible builds found", native code has changed and you need a new build (`eas build`). OTA only works for JS-only changes.
+
+3. **Web bundling issues**: If web export fails (e.g., native-only modules), use `--platform ios` or `--platform android` to skip web.
+
+4. **User gets update**: Users need to fully close and reopen the app to receive the update.
+
+### When OTA Works vs Needs New Build
+
+| Change Type | OTA Works? |
+|-------------|-----------|
+| JS/TSX code changes | ✅ Yes |
+| Style changes | ✅ Yes |
+| New npm package (JS-only) | ✅ Yes |
+| New native module | ❌ Need new build |
+| Expo SDK upgrade | ❌ Need new build |
+| app.json config changes | ❌ Need new build |
+
 ## Building Features from Web Docs
 
 When given a `.md` file from the web app:

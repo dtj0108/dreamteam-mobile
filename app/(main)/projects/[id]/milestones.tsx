@@ -20,7 +20,7 @@ import {
   useCreateMilestone,
   useDeleteMilestone,
   useTasks,
-} from "../../../../../../lib/hooks/useProjects";
+} from "../../../../lib/hooks/useProjects";
 import {
   Milestone,
   MilestoneStatus,
@@ -28,8 +28,8 @@ import {
   getMilestoneStatusLabel,
   getMilestoneStatusIcon,
   TASK_STATUS_COLORS,
-} from "../../../../../../lib/types/projects";
-import { ProgressBar } from "../../../../../../components/projects/ProgressBar";
+} from "../../../../lib/types/projects";
+import { ProgressBar } from "../../../../components/projects/ProgressBar";
 
 export default function ProjectMilestonesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

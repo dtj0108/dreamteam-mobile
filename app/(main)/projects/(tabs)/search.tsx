@@ -60,12 +60,12 @@ export default function SearchScreen() {
   };
 
   const handleProjectPress = (project: Project) => {
-    router.push(`/(main)/projects/(tabs)/(home)/${project.id}` as any);
+    router.push(`/(main)/projects/${project.id}` as any);
   };
 
   const handleTaskPress = (task: Task) => {
     if (task.project?.id) {
-      router.push(`/(main)/projects/(tabs)/(home)/${task.project.id}` as any);
+      router.push(`/(main)/projects/${task.project.id}` as any);
     }
   };
 

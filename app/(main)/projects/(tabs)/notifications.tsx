@@ -61,7 +61,7 @@ export default function NotificationsScreen() {
       });
     } else if (notification.project_id) {
       router.push({
-        pathname: "/(main)/projects/(tabs)/(home)/[id]",
+        pathname: "/(main)/projects/[id]",
         params: { id: notification.project_id },
       });
     }

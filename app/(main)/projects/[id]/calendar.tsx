@@ -10,13 +10,13 @@ import {
 import { FontAwesome } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 
-import { useProject, useTasks } from "../../../../../../lib/hooks/useProjects";
+import { useProject, useTasks } from "../../../../lib/hooks/useProjects";
 import {
   Task,
   TASK_STATUS_COLORS,
   getTaskStatusLabel,
-} from "../../../../../../lib/types/projects";
-import { TaskCard } from "../../../../../../components/projects/TaskCard";
+} from "../../../../lib/types/projects";
+import { TaskCard } from "../../../../components/projects/TaskCard";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [

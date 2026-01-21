@@ -143,7 +143,7 @@ export default function MyTasksScreen() {
   // Handlers
   const handleTaskPress = (task: Task) => {
     if (task.project?.id) {
-      router.push(`/(main)/projects/(tabs)/(home)/${task.project.id}` as any);
+      router.push(`/(main)/projects/${task.project.id}` as any);
     }
   };
 

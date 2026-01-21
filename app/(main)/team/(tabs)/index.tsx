@@ -6,6 +6,7 @@ import {
   Pressable,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,7 @@ import { CollapsibleSection } from "@/components/team/CollapsibleSection";
 import { ChannelListItem } from "@/components/team/ChannelListItem";
 import { DMListItem } from "@/components/team/DMListItem";
 import { FABMenu } from "@/components/team/FABMenu";
+import { isAvailable as isHuddleAvailable } from "@/modules/chime-sdk/src";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -271,7 +273,16 @@ export default function HomeScreen() {
         onCreateChannel={handleCreateChannel}
         onStartDM={() => router.push("/(main)/team/dm/new")}
         onStartHuddle={() => {
-          // Placeholder for huddle functionality
+          if (!isHuddleAvailable) {
+            Alert.alert(
+              "Development Build Required",
+              "Huddles require a development build with native code.\n\nRun: eas build --profile development",
+              [{ text: "OK" }]
+            );
+            return;
+          }
+          // Navigate to start a new huddle - uses a general meeting room
+          router.push("/(main)/team/meeting/general");
         }}
       />
     </View>

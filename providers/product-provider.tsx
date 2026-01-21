@@ -1,6 +1,6 @@
 import { usePathname } from "expo-router";
 
-export type ProductId = "finance" | "sales" | "team" | "projects" | "knowledge";
+export type ProductId = "hub" | "finance" | "sales" | "team" | "projects" | "knowledge" | "agents";
 
 export interface Product {
   id: ProductId;
@@ -11,6 +11,13 @@ export interface Product {
 }
 
 export const PRODUCTS: Product[] = [
+  {
+    id: "hub",
+    name: "Hub",
+    emoji: "🏠",
+    route: "/(main)/hub",
+    description: "Home dashboard",
+  },
   {
     id: "finance",
     name: "Finance",
@@ -46,19 +53,27 @@ export const PRODUCTS: Product[] = [
     route: "/(main)/more/knowledge",
     description: "Documentation wiki",
   },
+  {
+    id: "agents",
+    name: "Agents",
+    emoji: "✨",
+    route: "/(main)/agents",
+    description: "AI employees",
+  },
 ];
 
 export function useCurrentProduct(): Product | null {
   const pathname = usePathname();
 
-  // Return null when on hub to indicate no product selected
+  // Return null when on hub - no product switcher needed
   if (pathname.startsWith("/hub")) return null;
-
-  if (pathname.startsWith("/sales")) return PRODUCTS[1];
-  if (pathname.startsWith("/team")) return PRODUCTS[2];
-  if (pathname.startsWith("/projects")) return PRODUCTS[3];
+  if (pathname.startsWith("/sales")) return PRODUCTS[2];
+  if (pathname.startsWith("/team")) return PRODUCTS[3];
+  if (pathname.startsWith("/projects")) return PRODUCTS[4];
   if (pathname.startsWith("/more/knowledge") || pathname.startsWith("/knowledge"))
-    return PRODUCTS[4];
+    return PRODUCTS[5];
+  if (pathname.startsWith("/agents"))
+    return PRODUCTS[6];
 
-  return PRODUCTS[0]; // default to finance
+  return PRODUCTS[1]; // default to finance
 }

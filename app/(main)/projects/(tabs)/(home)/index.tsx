@@ -39,7 +39,7 @@ export default function ProjectsScreen() {
 
   // Handlers
   const handleProjectPress = (project: Project) => {
-    router.push(`/(main)/projects/(tabs)/(home)/${project.id}` as any);
+    router.push(`/(main)/projects/${project.id}` as any);
   };
 
   const handleAddProject = () => {

@@ -13,5 +13,5 @@ export default function Index() {
     return <Redirect href="/(main)/hub" />;
   }
 
-  return <Redirect href="/(auth)/login" />;
+  return <Redirect href="/(auth)/welcome" />;
 }

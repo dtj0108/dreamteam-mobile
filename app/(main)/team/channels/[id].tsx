@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,6 +26,7 @@ import { MessageList } from "@/components/team/MessageList";
 import { MessageInput } from "@/components/team/MessageInput";
 import { ChannelHeader } from "@/components/team/ChannelHeader";
 import { useFileAttachments } from "@/lib/hooks/useFileAttachments";
+import { isAvailable as isHuddleAvailable } from "@/modules/chime-sdk/src";
 
 export default function ChannelViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -136,9 +138,18 @@ export default function ChannelViewScreen() {
   }, []);
 
   const handleHuddlePress = useCallback(() => {
-    // TODO: Start huddle
-    console.log("Start huddle");
-  }, []);
+    if (!isHuddleAvailable) {
+      Alert.alert(
+        "Development Build Required",
+        "Huddles require a development build with native code.\n\nRun: eas build --profile development",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    if (id) {
+      router.push(`/(main)/team/meeting/${id}`);
+    }
+  }, [id, router]);
 
   const handleMessagePress = useCallback((message: Message) => {
     // TODO: Show message actions

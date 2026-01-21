@@ -4,6 +4,8 @@ export default function ProjectsLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="[id]" />
     </Stack>
   );
 }
+
